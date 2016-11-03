@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define NUM_PARAMS 5
 #define true 1
 #define false 0
 
@@ -29,7 +30,7 @@ int main(int argc, char *argv[])
 
     /* Test and set debug mode */
     boolean debug = false;
-    if (argc > 5 && strcmp(argv[5], "DEBUG") == 0) {
+    if (argc > NUM_PARAMS && strcmp(argv[NUM_PARAMS], "DEBUG") == 0) {
         debug = true;
     }
 
