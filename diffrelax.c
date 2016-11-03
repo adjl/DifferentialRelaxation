@@ -83,7 +83,7 @@ int main(int argc, char *argv[])
     load_data_to_array(data_array, data_dim, data_file);
 
     if (debug) {
-        printf("debug(load_data_to_array):\n");
+        printf("debug(data_array):\n");
         for (i = 0; i < data_dim; i++) {
             for (j = 0; j < data_dim; j++) {
                 printf("%.8f ", data_array[i][j]);
