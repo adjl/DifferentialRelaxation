@@ -102,36 +102,30 @@ int main(int argc, char *argv[])
     }
 
     /* Average the four neighbours of non-boundary numbers */
+    if (debug) printf("debug(avg_array):\n");
     for (i = 1; i < data_dim - 1; i++) {
         for (j = 1; j < data_dim - 1; j++) {
             avg_array[i][j] = (data_array[i - 1][j] + data_array[i][j - 1]
                     + data_array[i][j + 1] + data_array[i + 1][j]) / 4.0f;
+            if (debug) printf("%.8f ", avg_array[i][j]);
         }
-    }
-
-    if (debug) {
-        printf("debug(avg_array):\n");
-        for (i = 0; i < avg_dim; i++) {
-            for (j = 0; j < avg_dim; j++) {
-                printf("%.8f ", avg_array[i][j]);
-            }
-            putchar('\n');
-        }
+        if (debug) putchar('\n');
     }
 
     /* Check if all values are within desired precision */
     num_precise = 0;
+    if (debug) printf("debug(diff):\n");
     for (i = 1; i < data_dim - 1; i++) {
         for (j = 1; j < data_dim - 1; j++) {
-            if (fabs(data_array[i][j] - avg_array[i - 1][j - 1]) < precision) {
+            double diff = fabs(data_array[i][j] - avg_array[i][j]);
+            if (debug) printf("%.8f ", diff);
+            if (diff < precision) {
                 num_precise++;
             }
         }
+        if (debug) putchar('\n');
     }
-
-    if (debug) {
-        printf("debug(num_precise): %d\n", num_precise);
-    }
+    if (debug) printf("debug(num_precise): %d\n", num_precise);
 
     /* Deallocate memory for 2D array */
     for (i = 0; i < data_dim; i++) {
