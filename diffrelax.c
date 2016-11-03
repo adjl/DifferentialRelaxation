@@ -21,8 +21,7 @@ int main(int argc, char *argv[])
         5. DEBUG (char *), option to enable debugging statements
 
         Examples:
-        $ ./diffrelax array.dat 3 1 0.001
-        $ ./diffrelax path/to/array.dat 6 4 1e-6 DEBUG
+        $ ./diffrelax path/to/array.dat 6 16 1e-6 DEBUG
     */
 
     double **data_array;
