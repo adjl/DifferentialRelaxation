@@ -31,6 +31,7 @@ int main(int argc, char *argv[])
     double precision;
     FILE *data_file;
     int i, j;
+    double **avg_array;
 
     /* Test and set debug mode */
     boolean debug = false;
@@ -93,7 +94,35 @@ int main(int argc, char *argv[])
     /* Close file */
     fclose(data_file);
 
+    /* Prepare 2D array for neighbour averages */
+    avg_array = (double **) malloc((dimension - 2) * sizeof(double *));
+    for (i = 0; i < dimension - 2; i++) {
+        avg_array[i] = (double *) malloc((dimension - 2) * sizeof(double));
+    }
+
+    /* Average the four neighbours of non-boundary numbers */
+    for (i = 1; i < dimension - 1; i++) {
+        for (j = 1; j < dimension - 1; j++) {
+            avg_array[i - 1][j - 1] = (data_array[i - 1][j] + data_array[i][j - 1]
+                    + data_array[i][j + 1] + data_array[i + 1][j]) / 4.0f;
+        }
+    }
+
+    if (debug) {
+        printf("debug(avg_array):\n");
+        for (i = 0; i < dimension - 2; i++) {
+            for (j = 0; j < dimension - 2; j++) {
+                printf("%f ", avg_array[i][j]);
+            }
+            putchar('\n');
+        }
+    }
+
     /* Deallocate memory for 2D array */
+    for (i = 0; i < dimension - 2; i++) {
+        free(avg_array[i]);
+    }
+    free(avg_array);
     for (i = 0; i < dimension; i++) {
         free(data_array[i]);
     }
