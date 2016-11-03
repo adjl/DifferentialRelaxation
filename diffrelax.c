@@ -81,6 +81,7 @@ int main(int argc, char *argv[])
 
     /* Store data in 2D array */
     load_data_to_array(data_array, data_dim, data_file);
+    fclose(data_file);
 
     if (debug) {
         printf("debug(data_array):\n");
@@ -91,9 +92,6 @@ int main(int argc, char *argv[])
             putchar('\n');
         }
     }
-
-    /* Close file */
-    fclose(data_file);
 
     /* Prepare 2D array for neighbour averages */
     avg_array = (double **) malloc(data_dim * sizeof(double *));
