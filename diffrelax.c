@@ -1,3 +1,4 @@
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -32,6 +33,7 @@ int main(int argc, char *argv[])
     int i, j;
     double **avg_array;
     int avg_dim;
+    int num_precise;
 
     /* Test and set debug mode */
     boolean debug = false;
@@ -117,6 +119,20 @@ int main(int argc, char *argv[])
             }
             putchar('\n');
         }
+    }
+
+    /* Check if all values are within desired precision */
+    num_precise = 0;
+    for (i = 1; i < data_dim - 1; i++) {
+        for (j = 1; j < data_dim - 1; j++) {
+            if (fabs(data_array[i][j] - avg_array[i - 1][j - 1]) < precision) {
+                num_precise++;
+            }
+        }
+    }
+
+    if (debug) {
+        printf("debug(num_precise): %d\n", num_precise);
     }
 
     /* Deallocate memory for 2D array */
