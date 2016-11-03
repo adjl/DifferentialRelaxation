@@ -31,6 +31,7 @@ int main(int argc, char *argv[])
     FILE *data_file;
     int i, j;
     double **avg_array;
+    int avg_dim;
 
     /* Test and set debug mode */
     boolean debug = false;
@@ -94,9 +95,10 @@ int main(int argc, char *argv[])
     fclose(data_file);
 
     /* Prepare 2D array for neighbour averages */
-    avg_array = (double **) malloc((dimension - 2) * sizeof(double *));
-    for (i = 0; i < dimension - 2; i++) {
-        avg_array[i] = (double *) malloc((dimension - 2) * sizeof(double));
+    avg_dim = data_dim - 2;
+    avg_array = (double **) malloc(avg_dim * sizeof(double *));
+    for (i = 0; i < avg_dim; i++) {
+        avg_array[i] = (double *) malloc(avg_dim * sizeof(double));
     }
 
     /* Average the four neighbours of non-boundary numbers */
@@ -109,8 +111,8 @@ int main(int argc, char *argv[])
 
     if (debug) {
         printf("debug(avg_array):\n");
-        for (i = 0; i < dimension - 2; i++) {
-            for (j = 0; j < dimension - 2; j++) {
+        for (i = 0; i < avg_dim; i++) {
+            for (j = 0; j < avg_dim; j++) {
                 printf("%.8f ", avg_array[i][j]);
             }
             putchar('\n');
@@ -118,7 +120,7 @@ int main(int argc, char *argv[])
     }
 
     /* Deallocate memory for 2D array */
-    for (i = 0; i < dimension - 2; i++) {
+    for (i = 0; i < avg_dim; i++) {
         free(avg_array[i]);
     }
     free(avg_array);
