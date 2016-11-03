@@ -8,6 +8,8 @@
 
 typedef int boolean;
 
+void load_data_to_array(double **, int, FILE *);
+
 int main(int argc, char *argv[])
 {
     /*
@@ -23,10 +25,12 @@ int main(int argc, char *argv[])
         $ ./diffrelax path/to/array.dat 6 4 1e-6 DEBUG
     */
 
-    double **values;
+    double **data_array;
     int dimension;
     int num_threads;
     double precision;
+    FILE *data_file;
+    int i, j;
 
     /* Test and set debug mode */
     boolean debug = false;
@@ -53,14 +57,58 @@ int main(int argc, char *argv[])
     }
 
     /* Allocate memory for 2D array */
-    values = (double**) malloc(dimension * sizeof(double*));
-    if (values == NULL) {
-        fprintf(stdout, "error: could not allocate memory for 2D array, aborting ...\n");
+    data_array = (double **) malloc(dimension * sizeof(double *));
+    if (data_array == NULL) {
+        printf("error: could not allocate memory for 2D array, aborting ...\n");
+        return 1;
+    }
+    for (i = 0; i < dimension; i++) {
+        data_array[i] = (double *) malloc(dimension * sizeof(double));
+        if (data_array[i] == NULL) {
+            printf("error: could not allocate memory for row %d of 2D array, aborting ...\n", i);
+            return 1;
+        }
+    }
+
+    /* Open array file for reading */
+    data_file = fopen(argv[1], "r");
+    if (data_file == NULL) {
+        printf("error: could not open data file, aborting ...\n");
         return 1;
     }
 
-    /* Deallocate memory */
-    free(values);
+    /* Store data in 2D array */
+    load_data_to_array(data_array, dimension, data_file);
+
+    if (debug) {
+        printf("debug(load_data_to_array):\n");
+        for (i = 0; i < dimension; i++) {
+            for (j = 0; j < dimension; j++) {
+                printf("%f ", data_array[i][j]);
+            }
+            putchar('\n');
+        }
+    }
+
+    /* Close file */
+    fclose(data_file);
+
+    /* Deallocate memory for 2D array */
+    for (i = 0; i < dimension; i++) {
+        free(data_array[i]);
+    }
+    free(data_array);
 
     return 0;
+}
+
+void load_data_to_array(double **data_array, int dimension, FILE *data_file)
+{
+    int i, j;
+    for (i = 0; i < dimension; i++) {
+        for (j = 0; j < dimension; j++) {
+            fscanf(data_file, "%lf", &data_array[i][j]);
+        }
+        fgetc(data_file);
+    }
 }
