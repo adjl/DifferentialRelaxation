@@ -53,7 +53,7 @@ int main(int argc, char *argv[])
     if (debug) {
         printf("debug: dimension(int)=%d\n", dimension);
         printf("debug: num_threads(int)=%d\n", num_threads);
-        printf("debug: precision(double)=%f\n", precision);
+        printf("debug: precision(double)=%.8f\n", precision);
     }
 
     /* Allocate memory for 2D array */
@@ -84,7 +84,7 @@ int main(int argc, char *argv[])
         printf("debug(load_data_to_array):\n");
         for (i = 0; i < dimension; i++) {
             for (j = 0; j < dimension; j++) {
-                printf("%f ", data_array[i][j]);
+                printf("%.8f ", data_array[i][j]);
             }
             putchar('\n');
         }
@@ -111,7 +111,7 @@ int main(int argc, char *argv[])
         printf("debug(avg_array):\n");
         for (i = 0; i < dimension - 2; i++) {
             for (j = 0; j < dimension - 2; j++) {
-                printf("%f ", avg_array[i][j]);
+                printf("%.8f ", avg_array[i][j]);
             }
             putchar('\n');
         }
