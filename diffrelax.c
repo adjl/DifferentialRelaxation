@@ -8,6 +8,7 @@
 
 double** malloc_array(int);
 void load_values_to_array(double **, int, FILE *);
+void fill_boundary_cells(double **, double **, int);
 
 /*  Parameters:
     1. File containing space-separated square array of doubles (string)
@@ -93,18 +94,8 @@ int main(int argc, char *argv[])
                 DISP_WIDTH, DISP_PRECN, precision);
         printf("------------------------------------------------------------\n");
 
-        /* Fill average results array with boundary numbers */
-        printf("log(data_array):\n");
-        for (i = 0; i < data_dim; i++) {
-            for (j = 0; j < data_dim; j++) {
-                if (i == 0 || i == data_dim - 1 || j == 0 || j == data_dim - 1) {
-                    avg_array[i][j] = data_array[i][j];
-                }
-                printf("%*.*f ", DISP_WIDTH, DISP_PRECN, avg_array[i][j]);
-            }
-            putchar('\n');
-        }
-        putchar('\n');
+        /* Fill results array with boundary numbers */
+        fill_boundary_cells(data_array, avg_array, data_dim);
 
         /* Deallocate memory for 2D array */
         for (i = 0; i < data_dim; i++) {
@@ -149,6 +140,23 @@ void load_values_to_array(double **data_array, int data_dim, FILE *data_file)
             printf("%*.*f ", DISP_WIDTH, DISP_PRECN, data_array[i][j]);
         }
         fgetc(data_file);
+        putchar('\n');
+    }
+    putchar('\n');
+}
+
+void fill_boundary_cells(double **data_array, double **avg_array, int data_dim)
+{
+    int i, j;
+
+    printf("log(data_array):\n");
+    for (i = 0; i < data_dim; i++) {
+        for (j = 0; j < data_dim; j++) {
+            if (i == 0 || i == data_dim - 1 || j == 0 || j == data_dim - 1) {
+                avg_array[i][j] = data_array[i][j];
+            }
+            printf("%*.*f ", DISP_WIDTH, DISP_PRECN, avg_array[i][j]);
+        }
         putchar('\n');
     }
     putchar('\n');
