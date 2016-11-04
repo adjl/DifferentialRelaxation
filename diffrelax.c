@@ -34,6 +34,7 @@ int main(int argc, char *argv[])
     }
 
     /* Convert arguments to appropriate types */
+    /* TODO: Do error-checking */
     data_dim = atoi(argv[2]);
     num_threads = atoi(argv[3]);
     precision = atof(argv[4]);
