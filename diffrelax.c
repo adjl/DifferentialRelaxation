@@ -25,7 +25,7 @@ int main(int argc, char *argv[])
     double **data_array, **avg_array;
     double precision;
     int data_dim, num_threads;
-    int precise_num;
+    int precise_num, avg_num;
     int i, j;
 
     if (argc != NUM_PARAMS) {
@@ -105,8 +105,9 @@ int main(int argc, char *argv[])
         }
         putchar('\n');
 
-        printf("log: precise_num=%d/%d [diff < %*.*f]\n", precise_num,
-                (data_dim - 2) * (data_dim - 2), DISP_WIDTH, DISP_PRECN, precision);
+        avg_num = (data_dim - 2) * (data_dim - 2);
+        printf("log: precise_num=%d/%d [diff < %*.*f]\n", precise_num, avg_num,
+                DISP_WIDTH, DISP_PRECN, precision);
         printf("------------------------------------------------------------\n");
 
         /* Fill average results array with boundary numbers */
@@ -128,7 +129,7 @@ int main(int argc, char *argv[])
         }
         free(data_array);
 
-        if (precise_num == (data_dim - 2) * (data_dim - 2)) {
+        if (precise_num == avg_num) {
             /* Deallocate memory for 2D array */
             for (i = 0; i < data_dim; i++) {
                 free(avg_array[i]);
