@@ -135,7 +135,8 @@ int main(int argc, char *argv[])
     }
 }
 
-double** malloc_array(int data_dim) {
+double** malloc_array(int data_dim)
+{
     int i;
     double **data_array = (double **) malloc(data_dim * sizeof(double *));
     if (data_array == NULL) return NULL;
