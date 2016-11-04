@@ -32,7 +32,6 @@ int main(int argc, char *argv[])
     FILE *data_file;
     int i, j;
     double **avg_array;
-    int avg_dim;
     int num_precise;
 
     /* Test and set debug mode */
@@ -82,9 +81,10 @@ int main(int argc, char *argv[])
 
     /* Store data in 2D array */
     load_data_to_array(data_array, data_dim, data_file);
+    fclose(data_file);
 
     if (debug) {
-        printf("debug(load_data_to_array):\n");
+        printf("debug(data_array):\n");
         for (i = 0; i < data_dim; i++) {
             for (j = 0; j < data_dim; j++) {
                 printf("%.8f ", data_array[i][j]);
@@ -93,50 +93,40 @@ int main(int argc, char *argv[])
         }
     }
 
-    /* Close file */
-    fclose(data_file);
-
     /* Prepare 2D array for neighbour averages */
-    avg_dim = data_dim - 2;
-    avg_array = (double **) malloc(avg_dim * sizeof(double *));
-    for (i = 0; i < avg_dim; i++) {
-        avg_array[i] = (double *) malloc(avg_dim * sizeof(double));
+    avg_array = (double **) malloc(data_dim * sizeof(double *));
+    for (i = 0; i < data_dim; i++) {
+        avg_array[i] = (double *) malloc(data_dim * sizeof(double));
     }
 
     /* Average the four neighbours of non-boundary numbers */
+    if (debug) printf("debug(avg_array):\n");
     for (i = 1; i < data_dim - 1; i++) {
         for (j = 1; j < data_dim - 1; j++) {
-            avg_array[i - 1][j - 1] = (data_array[i - 1][j] + data_array[i][j - 1]
+            avg_array[i][j] = (data_array[i - 1][j] + data_array[i][j - 1]
                     + data_array[i][j + 1] + data_array[i + 1][j]) / 4.0f;
+            if (debug) printf("%.8f ", avg_array[i][j]);
         }
-    }
-
-    if (debug) {
-        printf("debug(avg_array):\n");
-        for (i = 0; i < avg_dim; i++) {
-            for (j = 0; j < avg_dim; j++) {
-                printf("%.8f ", avg_array[i][j]);
-            }
-            putchar('\n');
-        }
+        if (debug) putchar('\n');
     }
 
     /* Check if all values are within desired precision */
     num_precise = 0;
+    if (debug) printf("debug(diff):\n");
     for (i = 1; i < data_dim - 1; i++) {
         for (j = 1; j < data_dim - 1; j++) {
-            if (fabs(data_array[i][j] - avg_array[i - 1][j - 1]) < precision) {
+            double diff = fabs(data_array[i][j] - avg_array[i][j]);
+            if (debug) printf("%.8f ", diff);
+            if (diff < precision) {
                 num_precise++;
             }
         }
+        if (debug) putchar('\n');
     }
-
-    if (debug) {
-        printf("debug(num_precise): %d\n", num_precise);
-    }
+    if (debug) printf("debug(num_precise): %d\n", num_precise);
 
     /* Deallocate memory for 2D array */
-    for (i = 0; i < avg_dim; i++) {
+    for (i = 0; i < data_dim; i++) {
         free(avg_array[i]);
     }
     free(avg_array);
