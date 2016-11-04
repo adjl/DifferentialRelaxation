@@ -80,26 +80,20 @@ int main(int argc, char *argv[])
             return 1;
         }
 
-        /* Average the four neighbours of non-boundary numbers */
-        printf("log(avg_array):\n");
+        /*  Average the four neighbours of non-boundary numbers
+            Calculate difference between between new and previous values
+            Check if results are within desired precision */
+        printf("log(avg_array[diff]):\n");
+        precise_num = 0;
         for (i = 1; i < data_dim - 1; i++) {
             for (j = 1; j < data_dim - 1; j++) {
+                double diff;
                 avg_array[i][j] = (data_array[i - 1][j] + data_array[i][j - 1]
                         + data_array[i][j + 1] + data_array[i + 1][j]) / 4.0f;
-                printf("%*.*f ", DISP_WIDTH, DISP_PRECN, avg_array[i][j]);
-            }
-            putchar('\n');
-        }
-        putchar('\n');
-
-        /* Check if all values are within desired precision */
-        precise_num = 0;
-        printf("log(diff):\n");
-        for (i = 1; i < data_dim - 1; i++) {
-            for (j = 1; j < data_dim - 1; j++) {
-                double diff = fabs(data_array[i][j] - avg_array[i][j]);
-                printf("%*.*f ", DISP_WIDTH, DISP_PRECN, diff);
+                diff = fabs(data_array[i][j] - avg_array[i][j]);
                 if (diff < precision) precise_num++;
+                printf("%*.*f[%*.*f] ", DISP_WIDTH, DISP_PRECN, avg_array[i][j],
+                        DISP_WIDTH, DISP_PRECN, diff);
             }
             putchar('\n');
         }
