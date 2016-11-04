@@ -10,9 +10,9 @@ double** malloc_array(int);
 void load_values_to_array(double **, int, FILE *);
 void fill_boundary_cells(double **, double **, int);
 
-/*  Parameters:
+/** Parameters:
     1. File containing space-separated square array of doubles (string)
-    2. Data array dimension (int)
+    2. Array dimension (int)
     3. Number of threads (int)
     4. Precision (double)
 
@@ -45,33 +45,33 @@ int main(int argc, char *argv[])
     printf("log: precision=%*.*f\n", DISP_WIDTH, DISP_PRECN, precision);
     printf("------------------------------------------------------------\n");
 
-    /* Allocate memory for 2D array */
+    /* Allocate memory for 2D data array */
     data_array = malloc_array(data_dim);
     if (data_array == NULL) {
         printf("error: could not allocate memory for 2D array, aborting ...\n");
         return 1;
     }
 
-    /* Open array file for reading */
+    /* Open data file */
     data_file = fopen(argv[1], "r");
     if (data_file == NULL) {
         printf("error: could not open data file, aborting ...\n");
         return 1;
     }
 
-    /* Store data in 2D array */
+    /* Load data into array from file */
     load_values_to_array(data_array, data_dim, data_file);
     fclose(data_file);
 
     for (;;) {
-        /* Prepare 2D array for neighbour averages */
+        /* Allocate memory for 2D neighbour averages array */
         avg_array = malloc_array(data_dim);
         if (avg_array == NULL) {
             printf("error: could not allocate memory for 2D array, aborting ...\n");
             return 1;
         }
 
-        /*  Average the four neighbours of non-boundary numbers
+        /** Average the four neighbours of non-boundary numbers
             Calculate difference between between new and previous values
             Check if results are within desired precision */
         printf("log(avg_array[diff]):\n");
@@ -95,24 +95,27 @@ int main(int argc, char *argv[])
                 DISP_WIDTH, DISP_PRECN, precision);
         printf("------------------------------------------------------------\n");
 
-        /* Fill results array with boundary numbers */
+        /* Fill averages array with boundary numbers */
         fill_boundary_cells(data_array, avg_array, data_dim);
 
-        /* Deallocate memory for 2D array */
+        /* Deallocate data array memory */
         for (i = 0; i < data_dim; i++) {
             free(data_array[i]);
         }
         free(data_array);
 
+        /* All results within precision */
         if (precise_num == avg_num) {
-            /* Deallocate memory for 2D array */
+            /* Deallocate averages array memory */
             for (i = 0; i < data_dim; i++) {
                 free(avg_array[i]);
             }
             free(avg_array);
+
             return 0;
         }
 
+        /* Use filled averages array as next data array */
         data_array = avg_array;
         avg_array = NULL;
     }
