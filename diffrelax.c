@@ -17,8 +17,7 @@ int calc_avg_and_diff(double **, double **, int, double);
     3. Number of threads (int)
     4. Precision (double)
 
-    Examples:
-    $ ./diffrelax path/to/array.dat 6 16 1e-6
+    Example: $ ./diffrelax path/to/array.dat 6 16 1e-6
 */
 int main(int argc, char *argv[])
 {
