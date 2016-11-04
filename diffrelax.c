@@ -6,6 +6,8 @@
 #define DISP_WIDTH 12
 #define DISP_PRECN 8
 
+double** malloc_array(int);
+
 int main(int argc, char *argv[])
 {
     /*
@@ -43,17 +45,10 @@ int main(int argc, char *argv[])
     printf("------------------------------------------------------------\n");
 
     /* Allocate memory for 2D array */
-    data_array = (double **) malloc(data_dim * sizeof(double *));
+    data_array = malloc_array(data_dim);
     if (data_array == NULL) {
         printf("error: could not allocate memory for 2D array, aborting ...\n");
         return 1;
-    }
-    for (i = 0; i < data_dim; i++) {
-        data_array[i] = (double *) malloc(data_dim * sizeof(double));
-        if (data_array[i] == NULL) {
-            printf("error: could not allocate memory for row %d of 2D array, aborting ...\n", i);
-            return 1;
-        }
     }
 
     /* Open array file for reading */
@@ -79,17 +74,10 @@ int main(int argc, char *argv[])
 
     for (;;) {
         /* Prepare 2D array for neighbour averages */
-        avg_array = (double **) malloc(data_dim * sizeof(double *));
+        avg_array = malloc_array(data_dim);
         if (avg_array == NULL) {
             printf("error: could not allocate memory for 2D array, aborting ...\n");
             return 1;
-        }
-        for (i = 0; i < data_dim; i++) {
-            avg_array[i] = (double *) malloc(data_dim * sizeof(double));
-            if (avg_array[i] == NULL) {
-                printf("error: could not allocate memory for row %d of 2D array, aborting ...\n", i);
-                return 1;
-            }
         }
 
         /* Average the four neighbours of non-boundary numbers */
@@ -152,4 +140,15 @@ int main(int argc, char *argv[])
         data_array = avg_array;
         avg_array = NULL;
     }
+}
+
+double** malloc_array(int data_dim) {
+    int i;
+    double **data_array = (double **) malloc(data_dim * sizeof(double *));
+    if (data_array == NULL) return NULL;
+    for (i = 0; i < data_dim; i++) {
+        data_array[i] = (double *) malloc(data_dim * sizeof(double));
+        if (data_array == NULL) return NULL;
+    }
+    return data_array;
 }
