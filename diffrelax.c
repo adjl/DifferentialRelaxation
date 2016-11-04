@@ -19,14 +19,12 @@ int main(int argc, char *argv[])
         $ ./diffrelax path/to/array.dat 6 16 1e-6
     */
 
-    double **data_array;
-    int data_dim;
-    int num_threads;
-    double precision;
     FILE *data_file;
-    int i, j;
-    double **avg_array;
+    double **data_array, **avg_array;
+    double precision;
+    int data_dim, num_threads;
     int precise_num;
+    int i, j;
 
     if (argc != NUM_PARAMS) {
         printf("error: incorrect number of parameters, aborting ...\n");
