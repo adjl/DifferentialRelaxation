@@ -8,19 +8,17 @@
 
 double** malloc_array(int);
 
+/*  Parameters:
+    1. File containing space-separated square array of doubles (string)
+    2. Data array dimension (int)
+    3. Number of threads (int)
+    4. Precision (double)
+
+    Examples:
+    $ ./diffrelax path/to/array.dat 6 16 1e-6
+*/
 int main(int argc, char *argv[])
 {
-    /*
-        Parameters:
-        1. File containing space-separated square array of doubles (string)
-        2. Data array dimension (int)
-        3. Number of threads (int)
-        4. Precision (double)
-
-        Examples:
-        $ ./diffrelax path/to/array.dat 6 16 1e-6
-    */
-
     FILE *data_file;
     double **data_array, **avg_array;
     double precision;
