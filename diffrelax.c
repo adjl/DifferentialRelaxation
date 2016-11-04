@@ -1,28 +1,22 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
 #define NUM_PARAMS 5
-#define true 1
-#define false 0
-
-typedef int boolean;
-
-void load_data_to_array(double **, int, FILE *);
+#define DISP_WIDTH 12
+#define DISP_PRECN 8
 
 int main(int argc, char *argv[])
 {
     /*
         Parameters:
-        1. Name of file containing space-separated square array of doubles (char *)
+        1. File containing space-separated square array of doubles (string)
         2. Data array dimension (int)
         3. Number of threads (int)
-        4. Precision (double), 1e-6 preferred
-        5. DEBUG (char *), option to enable debugging statements
+        4. Precision (double)
 
         Examples:
-        $ ./diffrelax path/to/array.dat 6 16 1e-6 DEBUG
+        $ ./diffrelax path/to/array.dat 6 16 1e-6
     */
 
     double **data_array;
@@ -32,19 +26,11 @@ int main(int argc, char *argv[])
     FILE *data_file;
     int i, j;
     double **avg_array;
-    int num_precise;
+    int precise_num;
 
-    /* Test and set debug mode */
-    boolean debug = false;
-    if (argc > NUM_PARAMS && strcmp(argv[NUM_PARAMS], "DEBUG") == 0) {
-        debug = true;
-    }
-
-    if (debug) {
-        printf("debug: data_file(char *)=%s\n", argv[1]);
-        printf("debug: data_dim(char *)=%s\n", argv[2]);
-        printf("debug: num_threads(char *)=%s\n", argv[3]);
-        printf("debug: precision(char *)=%s\n", argv[4]);
+    if (argc != NUM_PARAMS) {
+        printf("error: incorrect number of parameters, aborting ...\n");
+        return 1;
     }
 
     /* Convert arguments to appropriate types */
@@ -52,11 +38,11 @@ int main(int argc, char *argv[])
     num_threads = atoi(argv[3]);
     precision = atof(argv[4]);
 
-    if (debug) {
-        printf("debug: data_dim(int)=%d\n", data_dim);
-        printf("debug: num_threads(int)=%d\n", num_threads);
-        printf("debug: precision(double)=%.8f\n", precision);
-    }
+    printf("log: data_file=%s\n", argv[1]);
+    printf("log: data_dim=%d\n", data_dim);
+    printf("log: num_threads=%d\n", num_threads);
+    printf("log: precision=%*.*f\n", DISP_WIDTH, DISP_PRECN, precision);
+    printf("------------------------------------------------------------\n");
 
     /* Allocate memory for 2D array */
     data_array = (double **) malloc(data_dim * sizeof(double *));
@@ -80,71 +66,92 @@ int main(int argc, char *argv[])
     }
 
     /* Store data in 2D array */
-    load_data_to_array(data_array, data_dim, data_file);
-    fclose(data_file);
-
-    if (debug) {
-        printf("debug(data_array):\n");
-        for (i = 0; i < data_dim; i++) {
-            for (j = 0; j < data_dim; j++) {
-                printf("%.8f ", data_array[i][j]);
-            }
-            putchar('\n');
-        }
-    }
-
-    /* Prepare 2D array for neighbour averages */
-    avg_array = (double **) malloc(data_dim * sizeof(double *));
-    for (i = 0; i < data_dim; i++) {
-        avg_array[i] = (double *) malloc(data_dim * sizeof(double));
-    }
-
-    /* Average the four neighbours of non-boundary numbers */
-    if (debug) printf("debug(avg_array):\n");
-    for (i = 1; i < data_dim - 1; i++) {
-        for (j = 1; j < data_dim - 1; j++) {
-            avg_array[i][j] = (data_array[i - 1][j] + data_array[i][j - 1]
-                    + data_array[i][j + 1] + data_array[i + 1][j]) / 4.0f;
-            if (debug) printf("%.8f ", avg_array[i][j]);
-        }
-        if (debug) putchar('\n');
-    }
-
-    /* Check if all values are within desired precision */
-    num_precise = 0;
-    if (debug) printf("debug(diff):\n");
-    for (i = 1; i < data_dim - 1; i++) {
-        for (j = 1; j < data_dim - 1; j++) {
-            double diff = fabs(data_array[i][j] - avg_array[i][j]);
-            if (debug) printf("%.8f ", diff);
-            if (diff < precision) {
-                num_precise++;
-            }
-        }
-        if (debug) putchar('\n');
-    }
-    if (debug) printf("debug(num_precise): %d\n", num_precise);
-
-    /* Deallocate memory for 2D array */
-    for (i = 0; i < data_dim; i++) {
-        free(avg_array[i]);
-    }
-    free(avg_array);
-    for (i = 0; i < data_dim; i++) {
-        free(data_array[i]);
-    }
-    free(data_array);
-
-    return 0;
-}
-
-void load_data_to_array(double **data_array, int data_dim, FILE *data_file)
-{
-    int i, j;
+    printf("log(data_array):\n");
     for (i = 0; i < data_dim; i++) {
         for (j = 0; j < data_dim; j++) {
             fscanf(data_file, "%lf", &data_array[i][j]);
+            printf("%*.*f ", DISP_WIDTH, DISP_PRECN, data_array[i][j]);
         }
         fgetc(data_file);
+        putchar('\n');
+    }
+    putchar('\n');
+
+    fclose(data_file);
+
+    for (;;) {
+        /* Prepare 2D array for neighbour averages */
+        avg_array = (double **) malloc(data_dim * sizeof(double *));
+        if (avg_array == NULL) {
+            printf("error: could not allocate memory for 2D array, aborting ...\n");
+            return 1;
+        }
+        for (i = 0; i < data_dim; i++) {
+            avg_array[i] = (double *) malloc(data_dim * sizeof(double));
+            if (avg_array[i] == NULL) {
+                printf("error: could not allocate memory for row %d of 2D array, aborting ...\n", i);
+                return 1;
+            }
+        }
+
+        /* Average the four neighbours of non-boundary numbers */
+        printf("log(avg_array):\n");
+        for (i = 1; i < data_dim - 1; i++) {
+            for (j = 1; j < data_dim - 1; j++) {
+                avg_array[i][j] = (data_array[i - 1][j] + data_array[i][j - 1]
+                        + data_array[i][j + 1] + data_array[i + 1][j]) / 4.0f;
+                printf("%*.*f ", DISP_WIDTH, DISP_PRECN, avg_array[i][j]);
+            }
+            putchar('\n');
+        }
+        putchar('\n');
+
+        /* Check if all values are within desired precision */
+        precise_num = 0;
+        printf("log(diff):\n");
+        for (i = 1; i < data_dim - 1; i++) {
+            for (j = 1; j < data_dim - 1; j++) {
+                double diff = fabs(data_array[i][j] - avg_array[i][j]);
+                printf("%*.*f ", DISP_WIDTH, DISP_PRECN, diff);
+                if (diff < precision) precise_num++;
+            }
+            putchar('\n');
+        }
+        putchar('\n');
+
+        printf("log: precise_num=%d/%d [diff < %*.*f]\n", precise_num,
+                (data_dim - 2) * (data_dim - 2), DISP_WIDTH, DISP_PRECN, precision);
+        printf("------------------------------------------------------------\n");
+
+        /* Fill average results array with boundary numbers */
+        printf("log(data_array):\n");
+        for (i = 0; i < data_dim; i++) {
+            for (j = 0; j < data_dim; j++) {
+                if (i == 0 || i == data_dim - 1 || j == 0 || j == data_dim - 1) {
+                    avg_array[i][j] = data_array[i][j];
+                }
+                printf("%*.*f ", DISP_WIDTH, DISP_PRECN, avg_array[i][j]);
+            }
+            putchar('\n');
+        }
+        putchar('\n');
+
+        /* Deallocate memory for 2D array */
+        for (i = 0; i < data_dim; i++) {
+            free(data_array[i]);
+        }
+        free(data_array);
+
+        if (precise_num == (data_dim - 2) * (data_dim - 2)) {
+            /* Deallocate memory for 2D array */
+            for (i = 0; i < data_dim; i++) {
+                free(avg_array[i]);
+            }
+            free(avg_array);
+            return 0;
+        }
+
+        data_array = avg_array;
+        avg_array = NULL;
     }
 }
