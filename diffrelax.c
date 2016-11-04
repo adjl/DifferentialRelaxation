@@ -25,7 +25,7 @@ int main(int argc, char *argv[])
     double **data_array, **avg_array;
     double precision;
     int data_dim, num_threads;
-    int precise_num, avg_num;
+    int num_precise, num_avg;
     int i, j;
 
     if (argc != NUM_PARAMS) {
@@ -75,14 +75,14 @@ int main(int argc, char *argv[])
             Calculate difference between between new and previous values
             Check if results are within desired precision */
         printf("log(avg_array[diff]):\n");
-        precise_num = 0;
+        num_precise = 0;
         for (i = 1; i < data_dim - 1; i++) {
             for (j = 1; j < data_dim - 1; j++) {
                 double diff;
                 avg_array[i][j] = (data_array[i - 1][j] + data_array[i][j - 1]
                         + data_array[i][j + 1] + data_array[i + 1][j]) / 4.0f;
                 diff = fabs(data_array[i][j] - avg_array[i][j]);
-                if (diff < precision) precise_num++;
+                if (diff < precision) num_precise++;
                 printf("%*.*f[%*.*f] ", DISP_WIDTH, DISP_PRECN, avg_array[i][j],
                         DISP_WIDTH, DISP_PRECN, diff);
             }
@@ -90,8 +90,8 @@ int main(int argc, char *argv[])
         }
         putchar('\n');
 
-        avg_num = (data_dim - 2) * (data_dim - 2);
-        printf("log: precise_num=%d/%d [diff < %*.*f]\n", precise_num, avg_num,
+        num_avg = (data_dim - 2) * (data_dim - 2);
+        printf("log: num_precise=%d/%d [diff < %*.*f]\n", num_precise, num_avg,
                 DISP_WIDTH, DISP_PRECN, precision);
         printf("------------------------------------------------------------\n");
 
@@ -105,7 +105,7 @@ int main(int argc, char *argv[])
         free(data_array);
 
         /* All results within precision */
-        if (precise_num == avg_num) {
+        if (num_precise == num_avg) {
             /* Deallocate averages array memory */
             for (i = 0; i < data_dim; i++) {
                 free(avg_array[i]);
