@@ -7,6 +7,7 @@
 #define DISP_PRECN 8
 
 double** malloc_array(int);
+void load_values_to_array(double **, int, FILE *);
 
 /*  Parameters:
     1. File containing space-separated square array of doubles (string)
@@ -57,17 +58,7 @@ int main(int argc, char *argv[])
     }
 
     /* Store data in 2D array */
-    printf("log(data_array):\n");
-    for (i = 0; i < data_dim; i++) {
-        for (j = 0; j < data_dim; j++) {
-            fscanf(data_file, "%lf", &data_array[i][j]);
-            printf("%*.*f ", DISP_WIDTH, DISP_PRECN, data_array[i][j]);
-        }
-        fgetc(data_file);
-        putchar('\n');
-    }
-    putchar('\n');
-
+    load_values_to_array(data_array, data_dim, data_file);
     fclose(data_file);
 
     for (;;) {
@@ -145,4 +136,20 @@ double** malloc_array(int data_dim)
         if (data_array == NULL) return NULL;
     }
     return data_array;
+}
+
+void load_values_to_array(double **data_array, int data_dim, FILE *data_file)
+{
+    int i, j;
+
+    printf("log(data_array):\n");
+    for (i = 0; i < data_dim; i++) {
+        for (j = 0; j < data_dim; j++) {
+            fscanf(data_file, "%lf", &data_array[i][j]);
+            printf("%*.*f ", DISP_WIDTH, DISP_PRECN, data_array[i][j]);
+        }
+        fgetc(data_file);
+        putchar('\n');
+    }
+    putchar('\n');
 }
