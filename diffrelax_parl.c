@@ -9,7 +9,8 @@
 
 typedef struct {
     double **data_array, **avg_array;
-    int i, j;
+    double precision;
+    int i, j, *num_precise;
 } pthread_args;
 
 double** malloc_array(int);
@@ -45,7 +46,7 @@ int main(int argc, char *argv[])
     double precision, diff;
     int data_dim, num_threads;
     int num_precise, num_avg;
-    int i, j, err;
+    int i, j, err, runs = 0;
 
     if (argc != NUM_PARAMS) {
         printf("error: incorrect number of parameters, aborting ...\n");
@@ -110,6 +111,8 @@ int main(int argc, char *argv[])
                 args.avg_array = avg_array;
                 args.i = i;
                 args.j = j;
+                args.precision = precision;
+                args.num_precise = &num_precise;
                 err = pthread_create(&thread, NULL, (void * (*) (void *)) calc_cell_avg, (void *) &args);
                 if (err != 0) {
                     printf("error: could not create thread %d,%d, aborting ...\n", i, j);
@@ -145,6 +148,8 @@ int main(int argc, char *argv[])
         }
         free(data_array);
 
+        runs++;
+
         /* All results within precision */
         if (num_precise == num_avg) {
             /* Deallocate averages array memory */
@@ -152,6 +157,8 @@ int main(int argc, char *argv[])
                 free(avg_array[i]);
             }
             free(avg_array);
+
+            printf("Runs: %d\n", runs); /* 26 runs originally */
 
             return 0;
         }
@@ -208,10 +215,16 @@ void fill_boundary_cells(double **data_array, double **avg_array, int data_dim)
     putchar('\n');
 }
 
+/* Mutex avg_array?, num_precise? */
 void calc_cell_avg(pthread_args *args)
 {
     double **data_array = args->data_array, **avg_array = args->avg_array;
     int i = args->i, j = args->j;
+    double diff;
     avg_array[i][j] = (data_array[i - 1][j] + data_array[i][j - 1]
             + data_array[i][j + 1] + data_array[i + 1][j]) / 4.0f;
+    diff = fabs(data_array[i][j] - avg_array[i][j]);
+    if (diff < args->precision) {
+        args->num_precise++;
+    }
 }

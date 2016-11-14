@@ -1,21 +1,18 @@
 #!/bin/sh
 
-#SBATCH --acount=cm30225
+#SBATCH --account=cm30225
 #SBATCH --partition=teaching
 
 # Optimal time?
 #SBATCH --time=00:05:00
 
-# Mail options
-# SBATCH --mail-user=hmj27@bath.ac.uk
-# SBATCH --mail-type=
+#SBATCH --mail-user=hmj27@bath.ac.uk
+#SBATCH --mail-type=BEGIN,END,FAIL
 
-# File options
 #SBATCH --job-name=diffrelax
-# SBATCH --output=
-# SBATCH --error=
+#SBATCH --output=diffrelax.out
+#SBATCH --error=diffrelax.err
 
-# Shared memory
 #SBATCH --nodes=1
 
 # Commands
@@ -27,4 +24,4 @@
 # sinfo, sview, sshare
 
 pwd
-./diffrelax array.dat 4 16 1e-6 # Test data
+./diffrelax_parl array.dat 4 4 1e-6 # Test data
