@@ -43,7 +43,7 @@ int main(int argc, char *argv[])
 {
     FILE *data_file;
     double **data_array, **avg_array;
-    double precision, diff;
+    double precision;
     int data_dim, num_threads;
     int num_precise, num_avg;
     int i, j, err, runs = 0;
@@ -123,13 +123,6 @@ int main(int argc, char *argv[])
                     printf("error: could not join on thread %d,%d, aborting ...\n", i, j);
                     exit(1);
                 }
-                printf("Thread calculating row %d, column %d = %*.*f\n", i, j,
-                        DISP_WIDTH, DISP_PRECN, avg_array[i][j]);
-
-                diff = fabs(data_array[i][j] - avg_array[i][j]);
-                if (diff < precision) num_precise++;
-                printf("%*.*f[%*.*f]\n", DISP_WIDTH, DISP_PRECN, avg_array[i][j],
-                        DISP_WIDTH, DISP_PRECN, diff);
             }
             putchar('\n');
         }
@@ -215,7 +208,6 @@ void fill_boundary_cells(double **data_array, double **avg_array, int data_dim)
     putchar('\n');
 }
 
-/* Mutex avg_array?, num_precise? */
 void calc_cell_avg(pthread_args *args)
 {
     double **data_array = args->data_array, **avg_array = args->avg_array;
@@ -224,7 +216,11 @@ void calc_cell_avg(pthread_args *args)
     avg_array[i][j] = (data_array[i - 1][j] + data_array[i][j - 1]
             + data_array[i][j + 1] + data_array[i + 1][j]) / 4.0f;
     diff = fabs(data_array[i][j] - avg_array[i][j]);
+    printf("thread calculating avg_array[%d][%d]=%*.*f[%*.*f]\n", i, j,
+            DISP_WIDTH, DISP_PRECN, avg_array[i][j],
+            DISP_WIDTH, DISP_PRECN, diff);
     if (diff < args->precision) {
-        args->num_precise++;
+        (*args->num_precise)++;
+        printf("\tdiff within precision, num_precise=%d\n", *args->num_precise);
     }
 }
