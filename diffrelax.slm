@@ -2,26 +2,20 @@
 
 #SBATCH --account=cm30225
 #SBATCH --partition=teaching
-
-# Optimal time?
-#SBATCH --time=00:05:00
-
 #SBATCH --mail-user=hmj27@bath.ac.uk
 #SBATCH --mail-type=BEGIN,END,FAIL
-
 #SBATCH --job-name=diffrelax
 #SBATCH --output=diffrelax.out
 #SBATCH --error=diffrelax.err
-
 #SBATCH --nodes=1
+#SBATCH --time=00:01:00
 
 # Commands
+# ========
 # sbatch jobfile
 # squeue [-u hmj27] | [-p teaching]
 # scancel jobid
-# scontrol show [job jobid] | [node nodename]
 # sprio -u hmj27
-# sinfo, sview, sshare
+# sview, sshare
 
-pwd
 ./diffrelax_parl array.dat 4 4 1e-6 # Test data
