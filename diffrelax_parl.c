@@ -13,11 +13,10 @@ typedef struct {
     int i, j, *num_precise;
 } pthread_args;
 
-double** malloc_array(int);
-void load_values_to_array(double **, int, FILE *);
-void fill_boundary_cells(double **, double **, int);
-
 void calc_cell_avg(pthread_args *);
+void fill_boundary_cells(double **, double **, int);
+void load_values_to_array(double **, int, FILE *);
+double** malloc_array(int);
 
 /** Parameters:
     1. File containing space-separated square array of doubles (string)
@@ -163,32 +162,21 @@ int main(int argc, char *argv[])
     }
 }
 
-double** malloc_array(int data_dim)
+void calc_cell_avg(pthread_args *args)
 {
-    int i;
-    double **data_array = (double **) malloc(data_dim * sizeof(double *));
-    if (data_array == NULL) return NULL;
-    for (i = 0; i < data_dim; i++) {
-        data_array[i] = (double *) malloc(data_dim * sizeof(double));
-        if (data_array == NULL) return NULL;
+    double **data_array = args->data_array, **avg_array = args->avg_array;
+    int i = args->i, j = args->j;
+    double diff;
+    avg_array[i][j] = (data_array[i - 1][j] + data_array[i][j - 1]
+            + data_array[i][j + 1] + data_array[i + 1][j]) / 4.0f;
+    diff = fabs(data_array[i][j] - avg_array[i][j]);
+    printf("thread calculating avg_array[%d][%d]=%*.*f[%*.*f]\n", i, j,
+            DISP_WIDTH, DISP_PRECN, avg_array[i][j],
+            DISP_WIDTH, DISP_PRECN, diff);
+    if (diff < args->precision) {
+        (*args->num_precise)++;
+        printf("\tdiff within precision, num_precise=%d\n", *args->num_precise);
     }
-    return data_array;
-}
-
-void load_values_to_array(double **data_array, int data_dim, FILE *data_file)
-{
-    int i, j;
-
-    printf("log(data_array):\n");
-    for (i = 0; i < data_dim; i++) {
-        for (j = 0; j < data_dim; j++) {
-            fscanf(data_file, "%lf", &data_array[i][j]);
-            printf("%*.*f ", DISP_WIDTH, DISP_PRECN, data_array[i][j]);
-        }
-        fgetc(data_file);
-        putchar('\n');
-    }
-    putchar('\n');
 }
 
 void fill_boundary_cells(double **data_array, double **avg_array, int data_dim)
@@ -208,19 +196,30 @@ void fill_boundary_cells(double **data_array, double **avg_array, int data_dim)
     putchar('\n');
 }
 
-void calc_cell_avg(pthread_args *args)
+void load_values_to_array(double **data_array, int data_dim, FILE *data_file)
 {
-    double **data_array = args->data_array, **avg_array = args->avg_array;
-    int i = args->i, j = args->j;
-    double diff;
-    avg_array[i][j] = (data_array[i - 1][j] + data_array[i][j - 1]
-            + data_array[i][j + 1] + data_array[i + 1][j]) / 4.0f;
-    diff = fabs(data_array[i][j] - avg_array[i][j]);
-    printf("thread calculating avg_array[%d][%d]=%*.*f[%*.*f]\n", i, j,
-            DISP_WIDTH, DISP_PRECN, avg_array[i][j],
-            DISP_WIDTH, DISP_PRECN, diff);
-    if (diff < args->precision) {
-        (*args->num_precise)++;
-        printf("\tdiff within precision, num_precise=%d\n", *args->num_precise);
+    int i, j;
+
+    printf("log(data_array):\n");
+    for (i = 0; i < data_dim; i++) {
+        for (j = 0; j < data_dim; j++) {
+            fscanf(data_file, "%lf", &data_array[i][j]);
+            printf("%*.*f ", DISP_WIDTH, DISP_PRECN, data_array[i][j]);
+        }
+        fgetc(data_file);
+        putchar('\n');
     }
+    putchar('\n');
+}
+
+double** malloc_array(int data_dim)
+{
+    int i;
+    double **data_array = (double **) malloc(data_dim * sizeof(double *));
+    if (data_array == NULL) return NULL;
+    for (i = 0; i < data_dim; i++) {
+        data_array[i] = (double *) malloc(data_dim * sizeof(double));
+        if (data_array == NULL) return NULL;
+    }
+    return data_array;
 }
