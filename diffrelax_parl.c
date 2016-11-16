@@ -10,12 +10,13 @@
 typedef struct {
     double **data_array, **avg_array;
     double precision;
-    int i, j, *num_precise;
+    int *num_precise;
+    int i, j;
 } pthread_args;
 
 void calc_cell_avg(pthread_args *);
 void fill_boundary_cells(double **, double **, int);
-void load_values_to_array(double **, int, FILE *);
+void load_values_to_array(FILE *, double **, int);
 double** malloc_array(int);
 
 /** Parameters:
@@ -41,11 +42,9 @@ double** malloc_array(int);
 int main(int argc, char *argv[])
 {
     FILE *data_file;
-    double **data_array, **avg_array;
+    double **data_array;
     double precision;
-    int data_dim, num_threads;
-    int num_precise, num_avg;
-    int i, j, err, runs = 0;
+    int data_dim, num_threads, num_avg;
 
     if (argc != NUM_PARAMS) {
         printf("error: incorrect number of parameters, aborting ...\n");
@@ -87,10 +86,14 @@ int main(int argc, char *argv[])
     }
 
     /* Load data into array from file */
-    load_values_to_array(data_array, data_dim, data_file);
+    load_values_to_array(data_file, data_array, data_dim);
     fclose(data_file);
 
     for (;;) {
+        double **avg_array;
+        int num_precise, err;
+        int i, j;
+
         /* Allocate memory for 2D neighbour averages array */
         avg_array = malloc_array(data_dim);
         if (avg_array == NULL) {
@@ -196,7 +199,7 @@ void fill_boundary_cells(double **data_array, double **avg_array, int data_dim)
     putchar('\n');
 }
 
-void load_values_to_array(double **data_array, int data_dim, FILE *data_file)
+void load_values_to_array(FILE *data_file, double **data_array, int data_dim)
 {
     int i, j;
 
