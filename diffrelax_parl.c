@@ -52,18 +52,11 @@ int main(int argc, char *argv[])
     }
 
     /* Convert arguments to appropriate types */
-    /* TODO: Do error-checking */
     data_dim = atoi(argv[2]);
     num_threads = atoi(argv[3]);
     precision = atof(argv[4]);
 
-    /* Limit number of threads */
     num_avg = (data_dim - 2) * (data_dim - 2);
-    if (num_threads > num_avg) {
-        printf("warning: more threads (%d) than results (%d) to calculate\n", num_threads, num_avg);
-        printf("warning: setting num_threads to limit (%d)\n", num_avg);
-        num_threads = num_avg;
-    }
 
     printf("log: data_file=%s\n", argv[1]);
     printf("log: data_dim=%d\n", data_dim);
