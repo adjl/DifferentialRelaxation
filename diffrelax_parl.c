@@ -143,8 +143,6 @@ int main(int argc, char *argv[])
         }
         free(data_array);
 
-        runs++;
-
         /* All results within precision */
         if (num_precise == num_avg) {
             /* Deallocate averages array memory */
@@ -152,8 +150,6 @@ int main(int argc, char *argv[])
                 free(avg_array[i]);
             }
             free(avg_array);
-
-            printf("Runs: %d\n", runs); /* 26 runs originally */
 
             return 0;
         }
