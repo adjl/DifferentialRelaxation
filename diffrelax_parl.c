@@ -145,12 +145,15 @@ int main(int argc, char *argv[])
                 args.start_cell_i = curr_cell_block;
                 args.stop_cell_i = curr_cell_block + num_cells_per_thread;
 
-                if (i == num_threads - 2 && share_extra_cells) {
-                    args.stop_cell_i += (num_extra_cells / 2);
-                } else if (i == num_threads - 1 && share_extra_cells) {
-                    args.stop_cell_i += (num_extra_cells / 2) + (num_extra_cells % 2);
-                } else if (i == num_threads - 1 && num_extra_cells > 0) {
-                    args.stop_cell_i++;
+                if (i >= num_threads - 2 && num_extra_cells > 0) {
+                    if (i == num_threads - 2 && share_extra_cells) {
+                        args.stop_cell_i += num_extra_cells / 2;
+                        curr_cell_block += num_extra_cells / 2;
+                    } else if (i == num_threads - 1 && share_extra_cells) {
+                        args.stop_cell_i += (num_extra_cells / 2) + (num_extra_cells % 2);
+                    } else if (i == num_threads - 1) {
+                        args.stop_cell_i++;
+                    }
                 }
 
                 thread_args[i] = args;
