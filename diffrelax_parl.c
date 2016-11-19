@@ -15,6 +15,7 @@ typedef struct {
     int start_cell_i, stop_cell_i;
 } pthread_args;
 
+void init_pthread_args(pthread_args *, double **, double **, double, int *, int);
 void idle_thread(pthread_args *);
 void calc_cell_avg(pthread_args *);
 void fill_boundary_cells(double **, double **, int);
@@ -49,9 +50,8 @@ int main(int argc, char *argv[])
     double precision;
     int data_dim, num_threads, num_avg;
 
-    int fewer_threads_than_cells, has_extra_cells; /* Flags */
-    /* int share_extra_cells, num_cells_per_thread; */
-    int num_extra_cells;
+    int fewer_threads_than_cells, share_extra_cells; /* Flags */
+    int num_cells_per_thread, num_extra_cells;
 
     if (argc != NUM_PARAMS) {
         printf("error: incorrect number of parameters, aborting ...\n");
@@ -90,12 +90,13 @@ int main(int argc, char *argv[])
     num_avg = (data_dim - 2) * (data_dim - 2);
     fewer_threads_than_cells = num_threads < num_avg;
     if (fewer_threads_than_cells) {
-        /* num_cells_per_thread = num_avg / num_threads; */
+        num_cells_per_thread = num_avg / num_threads;
         num_extra_cells = num_avg % num_threads;
-        has_extra_cells = num_extra_cells > 0;
-        if (has_extra_cells) {
-            /* share_extra_cells = num_extra_cells % 2 == 0; */
-        }
+        share_extra_cells = (num_extra_cells > 0) ? num_extra_cells / 2 : -1;
+    } else {
+        num_cells_per_thread = -1;
+        num_extra_cells = -1;
+        share_extra_cells = -1;
     }
 
     threads = (pthread_t *) malloc(num_threads * sizeof(pthread_t));
@@ -123,22 +124,43 @@ int main(int argc, char *argv[])
         /* inc += num_cells_per_thread */
 
         if (fewer_threads_than_cells) {
-            /* TODO */
+            int curr_cell_block;
+            for (i = 0, curr_cell_block = 0; i < num_threads;
+                    i++, curr_cell_block += num_cells_per_thread) {
+                pthread_t thread;
+                pthread_args args;
+                init_pthread_args(&args, data_array, avg_array, precision, &num_precise, data_dim);
+                args.thread_id = i;
+                args.start_cell_i = curr_cell_block;
+                args.stop_cell_i = curr_cell_block + num_cells_per_thread;
+                if (i == num_threads - 2 && share_extra_cells) {
+                    args.stop_cell_i += (num_extra_cells / 2);
+                } else if (i == num_threads - 1 && share_extra_cells) {
+                    args.stop_cell_i += (num_extra_cells / 2) + (num_extra_cells % 2);
+                } else if (i == num_threads - 1 && num_extra_cells > 0) {
+                    args.stop_cell_i++;
+                }
+                error = pthread_create(&thread, NULL, (void *(*) (void *)) calc_cell_avg, (void *) &args);
+                threads[i] = thread;
+                if (error != 0) {
+                    printf("error: could not create thread %d, aborting ...\n", i);
+                    return 1;
+                }
+                error = pthread_join(threads[i], NULL);
+                if (error != 0) {
+                    printf("error: could not join on thread %d, aborting ...\n", i);
+                    return 1;
+                }
+            }
         } else {
             for (i = 0; i < num_threads; i++) {
                 pthread_t thread;
                 pthread_args args;
+                init_pthread_args(&args, data_array, avg_array, precision, &num_precise, data_dim);
                 args.thread_id = i;
                 if (i < num_avg) {
-                    args.thread_id = i;
-                    args.data_array = data_array;
-                    args.avg_array = avg_array;
-                    args.precision = precision;
-                    args.num_precise = &num_precise;
-                    args.avg_dim = data_dim - 2;
                     args.start_cell_i = i;
                     args.stop_cell_i = i + 1;
-
                     error = pthread_create(&thread, NULL, (void *(*) (void *)) calc_cell_avg, (void *) &args);
                     threads[i] = thread;
                     if (error != 0) {
@@ -200,6 +222,15 @@ int main(int argc, char *argv[])
     }
 }
 
+void init_pthread_args(pthread_args *args, double **data_array, double **avg_array, double precision, int *num_precise, int data_dim)
+{
+    args->data_array = data_array;
+    args->avg_array = avg_array;
+    args->precision = precision;
+    args->num_precise = num_precise;
+    args->avg_dim = data_dim - 2;
+}
+
 void idle_thread(pthread_args *args)
 {
     printf("thread %d being idling ...\n", args->thread_id);
@@ -207,14 +238,16 @@ void idle_thread(pthread_args *args)
 
 void calc_cell_avg(pthread_args *args)
 {
-    if (args->stop_cell_i - args->start_cell_i == 1) {
-        double **data_array, **avg_array;
-        double diff;
-        int i, j;
-        data_array = args->data_array;
-        avg_array = args->avg_array;
-        i = args->start_cell_i / args->avg_dim + 1;
-        j = args->stop_cell_i % args->avg_dim + 1;
+    double **data_array, **avg_array;
+    double diff;
+    int i, j, k;
+
+    data_array = args->data_array;
+    avg_array = args->avg_array;
+
+    for (k = args->start_cell_i; k < args->stop_cell_i; k++) {
+        i = k / args->avg_dim + 1;
+        j = k % args->avg_dim + 1;
         avg_array[i][j] = (data_array[i - 1][j] + data_array[i][j - 1]
                 + data_array[i][j + 1] + data_array[i + 1][j]) / 4.0f;
         diff = fabs(data_array[i][j] - avg_array[i][j]);
@@ -223,7 +256,7 @@ void calc_cell_avg(pthread_args *args)
                 DISP_WIDTH, DISP_PRECN, avg_array[i][j],
                 DISP_WIDTH, DISP_PRECN, diff);
         if (diff < args->precision) {
-            (*args->num_precise)++;
+            (*args->num_precise)++; /* TODO: Use mutex here */
             printf("\tdiff within precision, num_precise=%d\n", *args->num_precise);
         }
     }
