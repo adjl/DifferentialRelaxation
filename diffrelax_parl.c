@@ -84,7 +84,7 @@ int main(int argc, char *argv[])
 
     for (;;) {
         double **avg_array;
-        int num_precise, err;
+        int num_precise, error;
         int i, j;
 
         /* Allocate memory for 2D neighbour averages array */
@@ -108,13 +108,13 @@ int main(int argc, char *argv[])
                 args.j = j;
                 args.precision = precision;
                 args.num_precise = &num_precise;
-                err = pthread_create(&thread, NULL, (void * (*) (void *)) calc_cell_avg, (void *) &args);
-                if (err != 0) {
+                error = pthread_create(&thread, NULL, (void *(*) (void *)) calc_cell_avg, (void *) &args);
+                if (error != 0) {
                     printf("error: could not create thread %d,%d, aborting ...\n", i, j);
                     exit(1);
                 }
-                err = pthread_join(thread, NULL);
-                if (err != 0) {
+                error = pthread_join(thread, NULL);
+                if (error != 0) {
                     printf("error: could not join on thread %d,%d, aborting ...\n", i, j);
                     exit(1);
                 }
@@ -156,8 +156,10 @@ int main(int argc, char *argv[])
 
 void calc_cell_avg(pthread_args *args)
 {
-    double **data_array = args->data_array, **avg_array = args->avg_array;
-    int i = args->i, j = args->j;
+    double **data_array = args->data_array;
+    double **avg_array = args->avg_array;
+    int i = args->i;
+    int j = args->j;
     double diff;
     avg_array[i][j] = (data_array[i - 1][j] + data_array[i][j - 1]
             + data_array[i][j + 1] + data_array[i + 1][j]) / 4.0f;
