@@ -11,7 +11,7 @@ typedef struct {
     double **data_array, **avg_array;
     double precision;
     int *num_precise;
-    int i, j;
+    int avg_dim, start_cell_i, stop_cell_i;
 } pthread_args;
 
 void calc_cell_avg(pthread_args *);
@@ -42,9 +42,14 @@ double** malloc_array(int);
 int main(int argc, char *argv[])
 {
     FILE *data_file;
+    pthread_t *threads;
     double **data_array;
     double precision;
     int data_dim, num_threads, num_avg;
+
+    int fewer_threads_than_cells, has_extra_cells; /* Flags */
+    /* int share_extra_cells, num_cells_per_thread; */
+    int num_extra_cells;
 
     if (argc != NUM_PARAMS) {
         printf("error: incorrect number of parameters, aborting ...\n");
@@ -55,8 +60,6 @@ int main(int argc, char *argv[])
     data_dim = atoi(argv[2]);
     num_threads = atoi(argv[3]);
     precision = atof(argv[4]);
-
-    num_avg = (data_dim - 2) * (data_dim - 2);
 
     printf("log: data_file=%s\n", argv[1]);
     printf("log: data_dim=%d\n", data_dim);
@@ -82,10 +85,26 @@ int main(int argc, char *argv[])
     load_values_to_array(data_file, data_array, data_dim);
     fclose(data_file);
 
+    num_avg = (data_dim - 2) * (data_dim - 2);
+    fewer_threads_than_cells = num_threads < num_avg;
+    if (fewer_threads_than_cells) {
+        /* num_cells_per_thread = num_avg / num_threads; */
+        num_extra_cells = num_avg % num_threads;
+        has_extra_cells = num_extra_cells > 0;
+        if (has_extra_cells) {
+            /* share_extra_cells = num_extra_cells % 2 == 0; */
+        }
+    }
+
+    threads = (pthread_t *) malloc(num_threads * sizeof(pthread_t));
+    if (threads == NULL) {
+        printf("error: could not allocate memory for thread pointers, aborting... \n");
+        return 1;
+    }
+
     for (;;) {
         double **avg_array;
-        int num_precise, error;
-        int i, j;
+        int num_precise, error, i;
 
         /* Allocate memory for 2D neighbour averages array */
         avg_array = malloc_array(data_dim);
@@ -97,31 +116,52 @@ int main(int argc, char *argv[])
         /** Average the four neighbours of non-boundary numbers
             Calculate difference between between new and previous values
             Count number of results within desired precision */
-        printf("log(avg_array[diff]):\n");
-        for (i = 1; i < data_dim - 1; i++) {
-            for (j = 1; j < data_dim - 1; j++) {
+
+        /* make thread for cells 0-nuqm_cells_per_thread (inc-exc) */
+        /* inc += num_cells_per_thread */
+
+        if (fewer_threads_than_cells) {
+            /* TODO */
+        } else {
+            for (i = 0; i < num_threads; i++) {
                 pthread_t thread;
-                pthread_args args;
-                args.data_array = data_array;
-                args.avg_array = avg_array;
-                args.i = i;
-                args.j = j;
-                args.precision = precision;
-                args.num_precise = &num_precise;
-                error = pthread_create(&thread, NULL, (void *(*) (void *)) calc_cell_avg, (void *) &args);
-                if (error != 0) {
-                    printf("error: could not create thread %d,%d, aborting ...\n", i, j);
-                    exit(1);
-                }
-                error = pthread_join(thread, NULL);
-                if (error != 0) {
-                    printf("error: could not join on thread %d,%d, aborting ...\n", i, j);
-                    exit(1);
+                if (i < num_avg) {
+                    pthread_args args;
+                    args.data_array = data_array;
+                    args.avg_array = avg_array;
+                    args.precision = precision;
+                    args.num_precise = &num_precise;
+                    args.avg_dim = data_dim - 2;
+                    args.start_cell_i = i;
+                    args.stop_cell_i = i + 1;
+
+                    error = pthread_create(&thread, NULL, (void *(*) (void *)) calc_cell_avg, (void *) &args);
+                    threads[i] = thread;
+                    if (error != 0) {
+                        printf("error: could not create thread, aborting ...\n");
+                        return 1;
+                    }
+                    error = pthread_join(threads[i], NULL);
+                    if (error != 0) {
+                        printf("error: could not join on thread, aborting ...\n");
+                        return 1;
+                    }
+                /* } else {
+                    error = pthread_create(&thread, NULL, NULL, NULL);
+                    threads[i] = thread;
+                    if (error != 0) {
+                        printf("error: could not create thread, aborting ...\n");
+                        return 1;
+                    }
+                    error = pthread_join(threads[i], NULL);
+                    if (error != 0) {
+                        printf("error: could not join on thread, aborting ...\n");
+                        return 1;
+                    } */
                 }
             }
             putchar('\n');
         }
-        putchar('\n');
 
         printf("log: num_precise=%d/%d [diff < %*.*f]\n", num_precise, num_avg,
                 DISP_WIDTH, DISP_PRECN, precision);
@@ -156,20 +196,24 @@ int main(int argc, char *argv[])
 
 void calc_cell_avg(pthread_args *args)
 {
-    double **data_array = args->data_array;
-    double **avg_array = args->avg_array;
-    int i = args->i;
-    int j = args->j;
-    double diff;
-    avg_array[i][j] = (data_array[i - 1][j] + data_array[i][j - 1]
-            + data_array[i][j + 1] + data_array[i + 1][j]) / 4.0f;
-    diff = fabs(data_array[i][j] - avg_array[i][j]);
-    printf("thread calculating avg_array[%d][%d]=%*.*f[%*.*f]\n", i, j,
-            DISP_WIDTH, DISP_PRECN, avg_array[i][j],
-            DISP_WIDTH, DISP_PRECN, diff);
-    if (diff < args->precision) {
-        (*args->num_precise)++;
-        printf("\tdiff within precision, num_precise=%d\n", *args->num_precise);
+    if (args->stop_cell_i - args->start_cell_i == 1) {
+        double **data_array, **avg_array;
+        double diff;
+        int i, j;
+        data_array = args->data_array;
+        avg_array = args->avg_array;
+        i = args->start_cell_i / args->avg_dim + 1;
+        j = args->stop_cell_i % args->avg_dim + 1;
+        avg_array[i][j] = (data_array[i - 1][j] + data_array[i][j - 1]
+                + data_array[i][j + 1] + data_array[i + 1][j]) / 4.0f;
+        diff = fabs(data_array[i][j] - avg_array[i][j]);
+        printf("thread calculating avg_array[%d][%d]=%*.*f[%*.*f]\n", i, j,
+                DISP_WIDTH, DISP_PRECN, avg_array[i][j],
+                DISP_WIDTH, DISP_PRECN, diff);
+        if (diff < args->precision) {
+            (*args->num_precise)++;
+            printf("\tdiff within precision, num_precise=%d\n", *args->num_precise);
+        }
     }
 }
 
