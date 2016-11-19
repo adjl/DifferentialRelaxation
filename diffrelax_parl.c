@@ -46,8 +46,9 @@ double** malloc_array(int);
 int main(int argc, char *argv[])
 {
     FILE *data_file;
-    pthread_t *threads;
     pthread_mutex_t num_precise_mx;
+    pthread_t *threads;
+    pthread_args *thread_args;
     double **data_array;
     double precision;
     int data_dim, num_threads, num_avg, runs = 0;
@@ -101,13 +102,17 @@ int main(int argc, char *argv[])
         share_extra_cells = 0;
     }
 
+    pthread_mutex_init(&num_precise_mx, NULL);
     threads = (pthread_t *) malloc(num_threads * sizeof(pthread_t));
     if (threads == NULL) {
         printf("error: could not allocate memory for thread pointers, aborting... \n");
         return 1;
     }
-
-    pthread_mutex_init(&num_precise_mx, NULL);
+    thread_args = (pthread_args *) malloc(num_threads * sizeof(pthread_args));
+    if (thread_args == NULL) {
+        printf("error: could not allocate memory for thread argument pointers, aborting ...\n");
+        return 1;
+    }
 
     for (;;) {
         double **avg_array;
@@ -148,15 +153,11 @@ int main(int argc, char *argv[])
                     args.stop_cell_i++;
                 }
 
-                error = pthread_create(&thread, NULL, (void *(*) (void *)) calc_cell_avg, (void *) &args);
+                thread_args[i] = args;
+                error = pthread_create(&thread, NULL, (void *(*) (void *)) calc_cell_avg, (void *) &thread_args[i]);
                 threads[i] = thread;
                 if (error != 0) {
                     printf("error: could not create thread %d, aborting ...\n", i);
-                    return 1;
-                }
-                error = pthread_join(threads[i], NULL);
-                if (error != 0) {
-                    printf("error: could not join on thread %d, aborting ...\n", i);
                     return 1;
                 }
             }
@@ -167,35 +168,29 @@ int main(int argc, char *argv[])
 
                 init_pthread_args(&args, &num_precise_mx, data_array, avg_array, precision, &num_precise, data_dim);
                 args.thread_id = i;
+                args.start_cell_i = i;
+                args.stop_cell_i = i + 1;
+                thread_args[i] = args;
 
                 if (i < num_avg) {
-                    args.start_cell_i = i;
-                    args.stop_cell_i = i + 1;
-
-                    error = pthread_create(&thread, NULL, (void *(*) (void *)) calc_cell_avg, (void *) &args);
-                    threads[i] = thread;
-                    if (error != 0) {
-                        printf("error: could not create thread %d, aborting ...\n", i);
-                        return 1;
-                    }
-                    error = pthread_join(threads[i], NULL);
-                    if (error != 0) {
-                        printf("error: could not join on thread %d, aborting ...\n", i);
-                        return 1;
-                    }
+                    error = pthread_create(&thread, NULL, (void *(*) (void *)) calc_cell_avg, (void *) &thread_args[i]);
                 } else {
-                    error = pthread_create(&thread, NULL, (void *(*) (void *)) idle_thread, (void *) &args);
-                    threads[i] = thread;
-                    if (error != 0) {
-                        printf("error: could not create thread %d, aborting ...\n", i);
-                        return 1;
-                    }
-                    error = pthread_join(threads[i], NULL);
-                    if (error != 0) {
-                        printf("error: could not join on thread %d, aborting ...\n", i);
-                        return 1;
-                    }
+                    error = pthread_create(&thread, NULL, (void *(*) (void *)) idle_thread, (void *) &thread_args[i]);
                 }
+
+                threads[i] = thread;
+                if (error != 0) {
+                    printf("error: could not create thread %d, aborting ...\n", i);
+                    return 1;
+                }
+            }
+        }
+
+        for (i = 0; i < num_threads; i++) {
+            error = pthread_join(threads[i], NULL);
+            if (error != 0) {
+                printf("error: could not join on thread %d, aborting ...\n", i);
+                return 1;
             }
         }
 
@@ -221,8 +216,9 @@ int main(int argc, char *argv[])
             }
             free(avg_array);
 
-            free(threads);
             pthread_mutex_destroy(&num_precise_mx);
+            free(threads);
+            free(thread_args);
 
             return 0;
         }
@@ -246,7 +242,7 @@ void init_pthread_args(pthread_args *args, pthread_mutex_t *num_precise_mx, doub
 
 void idle_thread(pthread_args *args)
 {
-    printf("thread %d being idling ...\n", args->thread_id);
+    printf("thread %d being idle ...\n", args->thread_id);
 }
 
 void calc_cell_avg(pthread_args *args)
