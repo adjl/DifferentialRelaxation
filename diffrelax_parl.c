@@ -125,14 +125,17 @@ int main(int argc, char *argv[])
 
         if (fewer_threads_than_cells) {
             int curr_cell_block;
+
             for (i = 0, curr_cell_block = 0; i < num_threads;
                     i++, curr_cell_block += num_cells_per_thread) {
                 pthread_t thread;
                 pthread_args args;
+
                 init_pthread_args(&args, data_array, avg_array, precision, &num_precise, data_dim);
                 args.thread_id = i;
                 args.start_cell_i = curr_cell_block;
                 args.stop_cell_i = curr_cell_block + num_cells_per_thread;
+
                 if (i == num_threads - 2 && share_extra_cells) {
                     args.stop_cell_i += (num_extra_cells / 2);
                 } else if (i == num_threads - 1 && share_extra_cells) {
@@ -140,6 +143,7 @@ int main(int argc, char *argv[])
                 } else if (i == num_threads - 1 && num_extra_cells > 0) {
                     args.stop_cell_i++;
                 }
+
                 error = pthread_create(&thread, NULL, (void *(*) (void *)) calc_cell_avg, (void *) &args);
                 threads[i] = thread;
                 if (error != 0) {
@@ -156,11 +160,14 @@ int main(int argc, char *argv[])
             for (i = 0; i < num_threads; i++) {
                 pthread_t thread;
                 pthread_args args;
+
                 init_pthread_args(&args, data_array, avg_array, precision, &num_precise, data_dim);
                 args.thread_id = i;
+
                 if (i < num_avg) {
                     args.start_cell_i = i;
                     args.stop_cell_i = i + 1;
+
                     error = pthread_create(&thread, NULL, (void *(*) (void *)) calc_cell_avg, (void *) &args);
                     threads[i] = thread;
                     if (error != 0) {
@@ -248,13 +255,16 @@ void calc_cell_avg(pthread_args *args)
     for (k = args->start_cell_i; k < args->stop_cell_i; k++) {
         i = k / args->avg_dim + 1;
         j = k % args->avg_dim + 1;
+
         avg_array[i][j] = (data_array[i - 1][j] + data_array[i][j - 1]
                 + data_array[i][j + 1] + data_array[i + 1][j]) / 4.0f;
         diff = fabs(data_array[i][j] - avg_array[i][j]);
+
         printf("thread %d calculating avg_array[%d][%d]=%*.*f[%*.*f]\n",
                 args->thread_id, i, j,
                 DISP_WIDTH, DISP_PRECN, avg_array[i][j],
                 DISP_WIDTH, DISP_PRECN, diff);
+
         if (diff < args->precision) {
             (*args->num_precise)++; /* TODO: Use mutex here */
             printf("\tdiff within precision, num_precise=%d\n", *args->num_precise);
