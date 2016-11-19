@@ -11,9 +11,11 @@ typedef struct {
     double **data_array, **avg_array;
     double precision;
     int *num_precise;
-    int avg_dim, start_cell_i, stop_cell_i;
+    int thread_id, avg_dim;
+    int start_cell_i, stop_cell_i;
 } pthread_args;
 
+void idle_thread(pthread_args *);
 void calc_cell_avg(pthread_args *);
 void fill_boundary_cells(double **, double **, int);
 void load_values_to_array(FILE *, double **, int);
@@ -125,8 +127,10 @@ int main(int argc, char *argv[])
         } else {
             for (i = 0; i < num_threads; i++) {
                 pthread_t thread;
+                pthread_args args;
+                args.thread_id = i;
                 if (i < num_avg) {
-                    pthread_args args;
+                    args.thread_id = i;
                     args.data_array = data_array;
                     args.avg_array = avg_array;
                     args.precision = precision;
@@ -138,26 +142,26 @@ int main(int argc, char *argv[])
                     error = pthread_create(&thread, NULL, (void *(*) (void *)) calc_cell_avg, (void *) &args);
                     threads[i] = thread;
                     if (error != 0) {
-                        printf("error: could not create thread, aborting ...\n");
+                        printf("error: could not create thread %d, aborting ...\n", i);
                         return 1;
                     }
                     error = pthread_join(threads[i], NULL);
                     if (error != 0) {
-                        printf("error: could not join on thread, aborting ...\n");
+                        printf("error: could not join on thread %d, aborting ...\n", i);
                         return 1;
                     }
-                /* } else {
-                    error = pthread_create(&thread, NULL, NULL, NULL);
+                } else {
+                    error = pthread_create(&thread, NULL, (void *(*) (void *)) idle_thread, (void *) &args);
                     threads[i] = thread;
                     if (error != 0) {
-                        printf("error: could not create thread, aborting ...\n");
+                        printf("error: could not create thread %d, aborting ...\n", i);
                         return 1;
                     }
                     error = pthread_join(threads[i], NULL);
                     if (error != 0) {
-                        printf("error: could not join on thread, aborting ...\n");
+                        printf("error: could not join on thread %d, aborting ...\n", i);
                         return 1;
-                    } */
+                    }
                 }
             }
             putchar('\n');
@@ -184,6 +188,8 @@ int main(int argc, char *argv[])
             }
             free(avg_array);
 
+            free(threads);
+
             return 0;
         }
 
@@ -192,6 +198,11 @@ int main(int argc, char *argv[])
         avg_array = NULL;
         num_precise = 0;
     }
+}
+
+void idle_thread(pthread_args *args)
+{
+    printf("thread %d being idling ...\n", args->thread_id);
 }
 
 void calc_cell_avg(pthread_args *args)
@@ -207,7 +218,8 @@ void calc_cell_avg(pthread_args *args)
         avg_array[i][j] = (data_array[i - 1][j] + data_array[i][j - 1]
                 + data_array[i][j + 1] + data_array[i + 1][j]) / 4.0f;
         diff = fabs(data_array[i][j] - avg_array[i][j]);
-        printf("thread calculating avg_array[%d][%d]=%*.*f[%*.*f]\n", i, j,
+        printf("thread %d calculating avg_array[%d][%d]=%*.*f[%*.*f]\n",
+                args->thread_id, i, j,
                 DISP_WIDTH, DISP_PRECN, avg_array[i][j],
                 DISP_WIDTH, DISP_PRECN, diff);
         if (diff < args->precision) {
