@@ -8,53 +8,37 @@
 #define DISP_PRECN 8
 
 typedef struct {
-    pthread_mutex_t *num_precise_mx;
+    pthread_mutex_t *mutex;
     double **data_array, **avg_array;
     double precision;
     int *num_precise;
-    int thread_id, avg_dim;
-    int start_cell_i, stop_cell_i;
+    int id, load, avg_dim;
+    int range_begin, range_end;
 } pthread_args;
 
-void init_pthread_args(pthread_args *, pthread_mutex_t *, double **, double **, double, int *, int);
 void idle_thread(pthread_args *);
-void calc_cell_avg(pthread_args *);
+void calculate_cell_avg(pthread_args *);
 void fill_boundary_cells(double **, double **, int);
 void load_values_to_array(FILE *, double **, int);
 double** malloc_array(int);
 
 /** Parameters:
-    1. File containing space-separated square array of doubles (string)
+    1. File containing space-separated square array of doubles (path)
     2. Array dimension (int)
     3. Number of threads (int)
     4. Precision (double)
-
-    Example: $ ./diffrelax path/to/array.dat 4 16 1e-6
-    ---
-    Test data:
-    17.3198997974 1.8272498801 7.63466682327 51.9568205874
-    2.75961348745 48.8679338506 11.9984764843 11.186690078
-    49.0808084867 31.601551633 26.5627217303 0.665492935087
-    33.7483243872 50.3427590377 33.6577443551 27.7679243712
-
-    Test result:
-    17.31989980   1.82724988   7.63466682  51.95682059
-     2.75961349  12.62171406  12.87471945  11.18669008
-    49.08080849  33.02527210  20.05580754   0.66549294
-    33.74832439  50.34275904  33.65774436  27.76792437
-*/
+    Example: $ ./diffrelax_prl data/array4.dat 4 4 1e-6 */
 int main(int argc, char *argv[])
 {
     FILE *data_file;
-    pthread_mutex_t num_precise_mx;
+    pthread_mutex_t mutex;
     pthread_t *threads;
     pthread_args *thread_args;
     double **data_array;
     double precision;
-    int *thread_load;
-    int data_dim, num_threads, num_avg;
-    int fewer_threads_than_cells;
-    int runs = 0;
+    int data_dim, fewer_threads_than_cells;
+    int num_threads, num_cells, num_precise;
+    int k, runs = 0;
 
     if (argc != NUM_PARAMS) {
         printf("error: incorrect number of parameters, aborting ...\n");
@@ -90,43 +74,50 @@ int main(int argc, char *argv[])
     load_values_to_array(data_file, data_array, data_dim);
     fclose(data_file);
 
-    num_avg = (data_dim - 2) * (data_dim - 2);
-    fewer_threads_than_cells = num_threads < num_avg;
+    /* Initialise thread arguments */
+    thread_args = (pthread_args *) malloc(num_threads * sizeof(pthread_args));
+    if (thread_args == NULL) {
+        printf("error: could not allocate memory for thread arguments array, aborting ...\n");
+        return 1;
+    }
+    for (k = 0; k < num_threads; k++) {
+        pthread_args args;
+        args.mutex = &mutex;
+        args.precision = precision;
+        args.num_precise = &num_precise;
+        args.id = k;
+        args.load = 0;
+        args.avg_dim = data_dim - 2;
+        thread_args[k] = args;
+    }
+
+    num_cells = (data_dim - 2) * (data_dim - 2);
+    fewer_threads_than_cells = num_threads < num_cells;
     if (fewer_threads_than_cells) {
         int extra_load, i;
-        thread_load = (int *) malloc(num_threads * sizeof(int));
-        if (thread_load == NULL) {
-            printf("error: could not allocate memory for thread load array, aborting ...\n");
-            return 1;
-        }
-        if (num_avg / 2 > num_avg - num_threads) {
-            extra_load = num_avg - num_threads;
+        if (num_cells / 2 > num_cells - num_threads) {
+            extra_load = num_cells - num_threads;
         } else {
-            extra_load = num_avg % num_threads;
+            extra_load = num_cells % num_threads;
         }
         for (i = num_threads - 1; i >= 0; i--) {
-            thread_load[i] += num_avg / num_threads;
+            thread_args[i].load += num_cells / num_threads;
             if (extra_load-- > 0) {
-                thread_load[i]++;
+                thread_args[i].load++;
             }
         }
     }
 
-    pthread_mutex_init(&num_precise_mx, NULL);
+    pthread_mutex_init(&mutex, NULL);
     threads = (pthread_t *) malloc(num_threads * sizeof(pthread_t));
     if (threads == NULL) {
         printf("error: could not allocate memory for thread pointers, aborting... \n");
         return 1;
     }
-    thread_args = (pthread_args *) malloc(num_threads * sizeof(pthread_args));
-    if (thread_args == NULL) {
-        printf("error: could not allocate memory for thread argument pointers, aborting ...\n");
-        return 1;
-    }
 
     for (;;) {
         double **avg_array;
-        int num_precise, error, i;
+        int error, i;
 
         /* Allocate memory for 2D neighbour averages array */
         avg_array = malloc_array(data_dim);
@@ -140,18 +131,15 @@ int main(int argc, char *argv[])
             Count number of results within desired precision */
 
         if (fewer_threads_than_cells) {
-            int curr_cell_i;
-
-            for (i = 0, curr_cell_i = 0; i < num_threads; curr_cell_i += thread_load[i], i++) {
+            int range_i;
+            for (i = 0, range_i = 0; i < num_threads; range_i += thread_args[i].load, i++) {
                 pthread_t thread;
-                pthread_args args;
+                thread_args[i].data_array = data_array;
+                thread_args[i].avg_array = avg_array;
+                thread_args[i].range_begin = range_i;
+                thread_args[i].range_end = range_i + thread_args[i].load;
 
-                init_pthread_args(&args, &num_precise_mx, data_array, avg_array, precision, &num_precise, data_dim);
-                args.thread_id = i;
-                args.start_cell_i = curr_cell_i;
-                args.stop_cell_i = curr_cell_i + thread_load[i];
-                thread_args[i] = args;
-                error = pthread_create(&thread, NULL, (void *(*) (void *)) calc_cell_avg, (void *) &thread_args[i]);
+                error = pthread_create(&thread, NULL, (void *(*) (void *)) calculate_cell_avg, (void *) &thread_args[i]);
                 threads[i] = thread;
                 if (error != 0) {
                     printf("error: could not create thread %d, aborting ...\n", i);
@@ -161,16 +149,13 @@ int main(int argc, char *argv[])
         } else {
             for (i = 0; i < num_threads; i++) {
                 pthread_t thread;
-                pthread_args args;
+                thread_args[i].data_array = data_array;
+                thread_args[i].avg_array = avg_array;
+                thread_args[i].range_begin = i;
+                thread_args[i].range_end = i + 1;
 
-                init_pthread_args(&args, &num_precise_mx, data_array, avg_array, precision, &num_precise, data_dim);
-                args.thread_id = i;
-                args.start_cell_i = i;
-                args.stop_cell_i = i + 1;
-                thread_args[i] = args;
-
-                if (i < num_avg) {
-                    error = pthread_create(&thread, NULL, (void *(*) (void *)) calc_cell_avg, (void *) &thread_args[i]);
+                if (i < num_cells) {
+                    error = pthread_create(&thread, NULL, (void *(*) (void *)) calculate_cell_avg, (void *) &thread_args[i]);
                 } else {
                     error = pthread_create(&thread, NULL, (void *(*) (void *)) idle_thread, (void *) &thread_args[i]);
                 }
@@ -192,7 +177,7 @@ int main(int argc, char *argv[])
         }
 
         printf("\nlog: runs=%d\n", ++runs);
-        printf("log: num_precise=%d/%d [diff < %*.*f]\n", num_precise, num_avg,
+        printf("log: num_precise=%d/%d [diff < %*.*f]\n", num_precise, num_cells,
                 DISP_WIDTH, DISP_PRECN, precision);
         printf("------------------------------------------------------------\n");
 
@@ -206,17 +191,16 @@ int main(int argc, char *argv[])
         free(data_array);
 
         /* All results within precision */
-        if (num_precise == num_avg) {
+        if (num_precise == num_cells) {
             /* Deallocate averages array memory */
             for (i = 0; i < data_dim; i++) {
                 free(avg_array[i]);
             }
             free(avg_array);
 
-            pthread_mutex_destroy(&num_precise_mx);
+            pthread_mutex_destroy(&mutex);
             free(threads);
             free(thread_args);
-            free(thread_load);
 
             return 0;
         }
@@ -228,22 +212,12 @@ int main(int argc, char *argv[])
     }
 }
 
-void init_pthread_args(pthread_args *args, pthread_mutex_t *num_precise_mx, double **data_array, double **avg_array, double precision, int *num_precise, int data_dim)
-{
-    args->num_precise_mx = num_precise_mx;
-    args->data_array = data_array;
-    args->avg_array = avg_array;
-    args->precision = precision;
-    args->num_precise = num_precise;
-    args->avg_dim = data_dim - 2;
-}
-
 void idle_thread(pthread_args *args)
 {
-    printf("thread %d being idle ...\n", args->thread_id);
+    printf("thread %d being idle ...\n", args->id);
 }
 
-void calc_cell_avg(pthread_args *args)
+void calculate_cell_avg(pthread_args *args)
 {
     double **data_array, **avg_array;
     double diff;
@@ -252,7 +226,7 @@ void calc_cell_avg(pthread_args *args)
     data_array = args->data_array;
     avg_array = args->avg_array;
 
-    for (k = args->start_cell_i; k < args->stop_cell_i; k++) {
+    for (k = args->range_begin; k < args->range_end; k++) {
         i = k / args->avg_dim + 1;
         j = k % args->avg_dim + 1;
 
@@ -261,16 +235,16 @@ void calc_cell_avg(pthread_args *args)
         diff = fabs(data_array[i][j] - avg_array[i][j]);
 
         printf("thread %d calculating avg_array[%d][%d]=%*.*f[%*.*f]\n",
-                args->thread_id, i, j,
+                args->id, i, j,
                 DISP_WIDTH, DISP_PRECN, avg_array[i][j],
                 DISP_WIDTH, DISP_PRECN, diff);
 
         if (diff < args->precision) {
-            pthread_mutex_lock(args->num_precise_mx);
+            pthread_mutex_lock(args->mutex);
             (*args->num_precise)++;
-            pthread_mutex_unlock(args->num_precise_mx);
+            pthread_mutex_unlock(args->mutex);
             printf("\tthread %d: diff within precision, num_precise=%d\n",
-                    args->thread_id, *args->num_precise);
+                    args->id, *args->num_precise);
         }
     }
 }
