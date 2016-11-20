@@ -11,26 +11,6 @@ void load_values_to_array(double **, int, FILE *);
 void fill_boundary_cells(double **, double **, int);
 int calc_avg_and_diff(double **, double **, int, double);
 
-/** Parameters:
-    1. File containing space-separated square array of doubles (string)
-    2. Array dimension (int)
-    3. Number of threads (int)
-    4. Precision (double)
-
-    Example: $ ./diffrelax path/to/array.dat 4 16 1e-6
-    ---
-    Test data:
-    17.3198997974 1.8272498801 7.63466682327 51.9568205874
-    2.75961348745 48.8679338506 11.9984764843 11.186690078
-    49.0808084867 31.601551633 26.5627217303 0.665492935087
-    33.7483243872 50.3427590377 33.6577443551 27.7679243712
-
-    Test result:
-    17.31989980   1.82724988   7.63466682  51.95682059
-     2.75961349  12.62171406  12.87471945  11.18669008
-    49.08080849  33.02527210  20.05580754   0.66549294
-    33.74832439  50.34275904  33.65774436  27.76792437
-*/
 int main(int argc, char *argv[])
 {
     FILE *data_file;
@@ -46,7 +26,6 @@ int main(int argc, char *argv[])
     }
 
     /* Convert arguments to appropriate types */
-    /* TODO: Do error-checking */
     data_dim = atoi(argv[2]);
     num_threads = atoi(argv[3]);
     precision = atof(argv[4]);
