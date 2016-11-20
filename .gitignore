@@ -55,5 +55,4 @@ dkms.conf
 
 # Project-specific
 diffrelax_seq
-diffrelax_parl
-thread_test
+diffrelax_prl
