@@ -18,4 +18,4 @@
 # sprio -u hmj27
 # sview, sshare
 
-./diffrelax_parl array.dat 4 4 1e-6 # Test data
+./diffrelax_prl array.dat 4 4 1e-6 # Test data

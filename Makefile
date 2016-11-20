@@ -2,17 +2,13 @@ CFLAGS=-std=c90 -g -pg -Wall -Wextra -Wunused -Wformat=2 -Waggregate-return -Wba
 
 all:
 	gcc $(CFLAGS) -o diffrelax_seq diffrelax_seq.c
-	gcc $(CFLAGS) -pthread -o diffrelax_parl diffrelax_parl.c
-	gcc $(CFLAGS) -pthread -o thread_test thread_test.c
+	gcc $(CFLAGS) -pthread -o diffrelax_prl diffrelax_prl.c
 
 seq:
 	gcc $(CFLAGS) -o diffrelax_seq diffrelax_seq.c
 
-parl:
-	gcc $(CFLAGS) -pthread -o diffrelax_parl diffrelax_parl.c
-
-thread_test:
-	gcc $(CFLAGS) -pthread -o thread_test thread_test.c
+prl:
+	gcc $(CFLAGS) -pthread -o diffrelax_prl diffrelax_prl.c
 
 clean:
-	rm diffrelax_seq diffrelax_parl thread_test
+	rm diffrelax_seq diffrelax_prl
