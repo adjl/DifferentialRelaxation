@@ -1,0 +1,25 @@
+#!/bin/sh
+
+#SBATCH --account=cm30225
+#SBATCH --partition=teaching
+#SBATCH --mail-user=hmj27@bath.ac.uk
+#SBATCH --mail-type=BEGIN,END,FAIL
+#SBATCH --nodes=1
+
+#SBATCH --job-name=diffrelax-scalinvest-18
+#SBATCH --output=diffrelax-scalinvest-18.out
+#SBATCH --error=diffrelax-scalinvest-18.err
+#SBATCH --time=00:05:00
+
+for thread in {1..160}; do
+  t="$(time (./diffrelax_prl array18.dat 18 $thread 1e-6) 2>&1 1>/dev/null)"
+  echo "$thread: $t" >> scalinvest_times_160.txt
+done
+
+# Commands
+# ========
+# sbatch jobfile
+# squeue [-u hmj27] | [-p teaching]
+# scancel jobid
+# sprio -u hmj27
+# sview, sshare
