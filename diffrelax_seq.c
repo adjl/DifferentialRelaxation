@@ -18,7 +18,7 @@ int main(int argc, char *argv[])
     double precision;
     int data_dim, num_threads;
     int num_precise, num_avg;
-    int i;
+    int i, run = 0;
 
     if (argc != NUM_PARAMS) {
         printf("error: incorrect number of parameters, aborting ...\n");
@@ -30,11 +30,10 @@ int main(int argc, char *argv[])
     num_threads = atoi(argv[3]);
     precision = atof(argv[4]);
 
-    printf("log: data_file=%s\n", argv[1]);
-    printf("log: data_dim=%d\n", data_dim);
-    printf("log: num_threads=%d\n", num_threads);
-    printf("log: precision=%*.*f\n", DISP_WIDTH, DISP_PRECN, precision);
-    printf("------------------------------------------------------------\n");
+    printf("data_file=%s\n", argv[1]);
+    printf("data_dim=%d\n", data_dim);
+    printf("num_threads=%d\n", num_threads);
+    printf("precision=%*.*f\n\n", DISP_WIDTH, DISP_PRECN, precision);
 
     /* Allocate memory for 2D data array */
     data_array = malloc_array(data_dim);
@@ -68,9 +67,9 @@ int main(int argc, char *argv[])
         num_precise = calc_avg_and_diff(data_array, avg_array, data_dim, precision);
         num_avg = (data_dim - 2) * (data_dim - 2);
 
-        printf("log: num_precise=%d/%d [diff < %*.*f]\n", num_precise, num_avg,
-                DISP_WIDTH, DISP_PRECN, precision);
-        printf("------------------------------------------------------------\n");
+        printf("\nrun=%d num_precise=%d/%d [diff < %*.*f]\n", ++run,
+                num_precise, num_avg, DISP_WIDTH, DISP_PRECN, precision);
+        printf("-----------------------------------------------------------\n");
 
         /* Fill averages array with boundary numbers */
         fill_boundary_cells(data_array, avg_array, data_dim);
@@ -113,24 +112,17 @@ double** malloc_array(int data_dim)
 void load_values_to_array(double **data_array, int data_dim, FILE *data_file)
 {
     int i, j;
-
-    printf("log(data_array):\n");
     for (i = 0; i < data_dim; i++) {
         for (j = 0; j < data_dim; j++) {
             fscanf(data_file, "%lf", &data_array[i][j]);
-            printf("%*.*f ", DISP_WIDTH, DISP_PRECN, data_array[i][j]);
         }
         fgetc(data_file);
-        putchar('\n');
     }
-    putchar('\n');
 }
 
 void fill_boundary_cells(double **data_array, double **avg_array, int data_dim)
 {
     int i, j;
-
-    printf("log(data_array):\n");
     for (i = 0; i < data_dim; i++) {
         for (j = 0; j < data_dim; j++) {
             if (i == 0 || i == data_dim - 1 || j == 0 || j == data_dim - 1) {
@@ -145,10 +137,7 @@ void fill_boundary_cells(double **data_array, double **avg_array, int data_dim)
 
 int calc_avg_and_diff(double **data_array, double **avg_array, int data_dim, double precision)
 {
-    int num_precise = 0;
-    int i, j;
-
-    printf("log(avg_array[diff]):\n");
+    int i, j, num_precise = 0;
     for (i = 1; i < data_dim - 1; i++) {
         for (j = 1; j < data_dim - 1; j++) {
             double diff;
@@ -156,12 +145,12 @@ int calc_avg_and_diff(double **data_array, double **avg_array, int data_dim, dou
                     + data_array[i][j + 1] + data_array[i + 1][j]) / 4.0f;
             diff = fabs(data_array[i][j] - avg_array[i][j]);
             if (diff < precision) num_precise++;
-            printf("%*.*f[%*.*f] ", DISP_WIDTH, DISP_PRECN, avg_array[i][j],
-                    DISP_WIDTH, DISP_PRECN, diff);
+            /* printf("%*.*f[%*.*f] ", DISP_WIDTH, DISP_PRECN, avg_array[i][j],
+                    DISP_WIDTH, DISP_PRECN, diff); */
         }
-        putchar('\n');
+        /* putchar('\n'); */
     }
-    putchar('\n');
+    /* putchar('\n'); */
 
     return num_precise;
 }
