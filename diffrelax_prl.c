@@ -6,8 +6,8 @@
 #define NUM_PARAMS 5
 #define DISP_WIDTH 12 /* Modify this to change the output width of the values */
 #define DISP_PRECN 8  /* Likewise for the display precision */
-#define VERBOSE 1     /* Toggle to 0 for piping output and to use with `diff` */
-
+#define VERBOSE 0     /* Set to 0 for piping output and to use with `diff` */
+                      /* Set to 1 to print information on thread activities */
 typedef struct {
     pthread_barrier_t *resume_barrier, *pause_barrier;
     pthread_mutex_t *num_precise_mx;
