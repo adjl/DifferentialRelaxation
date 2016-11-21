@@ -6,6 +6,7 @@
 #define NUM_PARAMS 5
 #define DISP_WIDTH 12 /* Modify this to change the output width of the values */
 #define DISP_PRECN 8  /* Likewise for the display precision */
+#define VERBOSE 1     /* Toggle to 0 for piping output and to use with `diff` */
 
 typedef struct {
     pthread_barrier_t *resume_barrier, *pause_barrier;
@@ -238,10 +239,10 @@ void just_idle(pthread_args *args)
     for (;;) {
         pthread_barrier_wait(args->resume_barrier);
         if (*args->all_precise) {
-            printf("thread %d: had nothing to do ... :(\n", args->id);
+            if (VERBOSE) printf("thread %d: had nothing to do ... :(\n", args->id);
             break;
         }
-        printf("thread %d: idling and feeling useless ...\n", args->id);
+        if (VERBOSE) printf("thread %d: idling and feeling useless ...\n", args->id);
         pthread_barrier_wait(args->pause_barrier);
     }
 }
@@ -254,7 +255,7 @@ void calculate_cell_avg(pthread_args *args)
 
         pthread_barrier_wait(args->resume_barrier);
         if (*args->all_precise) {
-            printf("thread %d: job done, exiting ...\n", args->id);
+            if (VERBOSE) printf("thread %d: job done, exiting ...\n", args->id);
             break;
         }
 
@@ -276,10 +277,12 @@ void calculate_cell_avg(pthread_args *args)
                     + data_array[i][j + 1] + data_array[i + 1][j]) / 4.0f;
             diff = fabs(data_array[i][j] - avg_array[i][j]);
 
-            printf("thread %d: calculating avg_array[%d][%d]=%*.*f[%*.*f]\n",
-                    args->id, i, j,
-                    DISP_WIDTH, DISP_PRECN, avg_array[i][j],
-                    DISP_WIDTH, DISP_PRECN, diff);
+            if (VERBOSE) {
+                printf("thread %d: calculating avg_array[%d][%d]=%*.*f[%*.*f]\n",
+                        args->id, i, j,
+                        DISP_WIDTH, DISP_PRECN, avg_array[i][j],
+                        DISP_WIDTH, DISP_PRECN, diff);
+            }
 
             if (diff < args->precision) {
                 int err = pthread_mutex_lock(args->num_precise_mx);
@@ -293,8 +296,10 @@ void calculate_cell_avg(pthread_args *args)
                     printf("error: could not unlock mutex, aborting ...\n");
                     exit(EXIT_FAILURE);
                 }
-                printf("\tthread %d: diff within precision, num_precise=%d\n",
-                        args->id, *args->num_precise);
+                if (VERBOSE) {
+                    printf("\tthread %d: diff within precision, num_precise=%d\n",
+                            args->id, *args->num_precise);
+                }
             }
         }
 
