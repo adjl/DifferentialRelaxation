@@ -1,0 +1,22 @@
+#!/bin/sh
+
+#SBATCH --account=cm30225
+#SBATCH --partition=teaching
+#SBATCH --mail-user=hmj27@bath.ac.uk
+#SBATCH --mail-type=BEGIN,END,FAIL
+#SBATCH --nodes=1
+
+#SBATCH --job-name=diffrelax7-5
+#SBATCH --output=diffrelax7-5.out
+#SBATCH --error=diffrelax7-5.err
+#SBATCH --time=00:00:20
+
+time ../diffrelax_prl ../data/array7.dat 7 5 1e-6 > ../balena_results/array7-5_prl.res
+
+# Commands
+# ========
+# sbatch jobfile
+# squeue [-u hmj27] | [-p teaching]
+# scancel jobid
+# sprio -u hmj27
+# sview, sshare

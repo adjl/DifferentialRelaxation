@@ -4,11 +4,14 @@
 #SBATCH --partition=teaching
 #SBATCH --mail-user=hmj27@bath.ac.uk
 #SBATCH --mail-type=BEGIN,END,FAIL
-#SBATCH --job-name=diffrelax
-#SBATCH --output=diffrelax.out
-#SBATCH --error=diffrelax.err
 #SBATCH --nodes=1
-#SBATCH --time=00:01:00
+
+#SBATCH --job-name=diffrelax7-1
+#SBATCH --output=diffrelax7-1.out
+#SBATCH --error=diffrelax7-1.err
+#SBATCH --time=00:00:20
+
+time ../diffrelax_prl ../data/array7.dat 7 1 1e-6 > ../balena_results/array7-1_prl.res
 
 # Commands
 # ========
@@ -17,5 +20,3 @@
 # scancel jobid
 # sprio -u hmj27
 # sview, sshare
-
-./diffrelax_prl array.dat 4 4 1e-6 # Test data
