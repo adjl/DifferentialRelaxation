@@ -11,7 +11,7 @@
 #SBATCH --error=diffrelax7-5.err
 #SBATCH --time=00:00:20
 
-time ../diffrelax_prl ../data/array7.dat 7 5 1e-6 > ../balena_results/array7-5_prl.res
+time ./diffrelax_prl data/array7.dat 7 5 1e-6 > balena_results/array7-5_prl.res
 
 # Commands
 # ========
