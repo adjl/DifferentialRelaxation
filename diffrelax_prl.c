@@ -13,14 +13,14 @@ typedef struct {
     double **data_array, **avg_array;
     double precision;
     int *all_precise, *num_precise;
-    int id, load, avg_dim;
+    int avg_dim, id, load;
     int range_begin, range_end;
 } pthread_args;
 
 void just_idle(pthread_args *);
 void calculate_cell_avg(pthread_args *);
 
-void fill_boundary_cells(double **, double **, int);
+void complete_and_print_array(double **, double **, int);
 void load_data_values(FILE *, double **, int);
 double** malloc_array(int);
 
@@ -35,13 +35,11 @@ int main(int argc, char *argv[])
     FILE *data_file;
     pthread_barrier_t resume_barrier, pause_barrier;
     pthread_mutex_t num_precise_mx;
-    pthread_t *threads;
     pthread_args *thread_args;
-    double **data_array, **avg_array;
+    double **data_array;
     double precision;
     int data_dim, num_threads, num_cells;
-    int all_precise, num_precise;
-    int error, i, run = 0;
+    int all_precise, num_precise, i;
 
     /* Read arguments ------------------------------------------------------- */
 
@@ -57,19 +55,16 @@ int main(int argc, char *argv[])
     printf("data_file=%s\n", argv[1]);
     printf("data_dim=%d\n", data_dim);
     printf("num_threads=%d\n", num_threads);
-    printf("precision=%*.*f\n", DISP_WIDTH, DISP_PRECN, precision);
+    printf("precision=%*.*f\n\n", DISP_WIDTH, DISP_PRECN, precision);
 
-    /* Initialise pthread_*, threads array ---------------------------------- */
+    /* Initialise pthread_* ------------------------------------------------- */
 
     pthread_barrier_init(&resume_barrier, NULL, num_threads + 1);
     pthread_barrier_init(&pause_barrier, NULL, num_threads + 1);
     pthread_mutex_init(&num_precise_mx, NULL);
 
-    threads = (pthread_t *) malloc(num_threads * sizeof(pthread_t));
-    if (threads == NULL) {
-        printf("error: could not allocate memory for threads array, aborting... \n");
-        return 1;
-    }
+    all_precise = 0;
+    num_precise = 0;
 
     /* Initialise thread arguments array ------------------------------------ */
 
@@ -86,9 +81,9 @@ int main(int argc, char *argv[])
         args.precision = precision;
         args.all_precise = &all_precise;
         args.num_precise = &num_precise;
+        args.avg_dim = data_dim - 2;
         args.id = i;
         args.load = 0;
-        args.avg_dim = data_dim - 2;
         thread_args[i] = args;
     }
 
@@ -127,14 +122,15 @@ int main(int argc, char *argv[])
         int range_i;
         for (i = 0, range_i = 0; i < num_threads; range_i += thread_args[i].load, i++) {
             pthread_t thread;
+            int error;
+
             thread_args[i].range_begin = range_i;
             thread_args[i].range_end = range_i + thread_args[i].load;
 
             error = pthread_create(&thread, NULL,
-                    (void *(*) (void *)) calculate_cell_avg,
+                    (void * (*) (void *)) calculate_cell_avg,
                     (void *) &thread_args[i]);
 
-            threads[i] = thread;
             if (error != 0) {
                 printf("error: could not create thread %d, aborting ...\n", i);
                 return 1;
@@ -143,20 +139,21 @@ int main(int argc, char *argv[])
     } else {
         for (i = 0; i < num_threads; i++) {
             pthread_t thread;
+            int error;
+
             thread_args[i].range_begin = i;
             thread_args[i].range_end = i + 1;
 
             if (i < num_cells) {
                 error = pthread_create(&thread, NULL,
-                        (void *(*) (void *)) calculate_cell_avg,
+                        (void * (*) (void *)) calculate_cell_avg,
                         (void *) &thread_args[i]);
             } else {
                 error = pthread_create(&thread, NULL,
-                        (void *(*) (void *)) just_idle,
+                        (void * (*) (void *)) just_idle,
                         (void *) &thread_args[i]);
             }
 
-            threads[i] = thread;
             if (error != 0) {
                 printf("error: could not create thread %d, aborting ...\n", i);
                 return 1;
@@ -164,14 +161,17 @@ int main(int argc, char *argv[])
         }
     }
 
-    all_precise = 0;
-
     for (;;) {
+        double **avg_array;
+        int run = 0;
+        num_precise = 0;
+
         avg_array = malloc_array(data_dim);
         if (avg_array == NULL) {
             printf("error: could not allocate memory for averages array, aborting ...\n");
             return 1;
         }
+
         for (i = 0; i < num_threads; i++) {
             thread_args[i].data_array = data_array;
             thread_args[i].avg_array = avg_array;
@@ -184,7 +184,7 @@ int main(int argc, char *argv[])
                 num_precise, num_cells, DISP_WIDTH, DISP_PRECN, precision);
         printf("-----------------------------------------------------------\n");
 
-        fill_boundary_cells(data_array, avg_array, data_dim);
+        complete_and_print_array(data_array, avg_array, data_dim);
         for (i = 0; i < data_dim; i++) {
             free(data_array[i]);
         }
@@ -201,14 +201,11 @@ int main(int argc, char *argv[])
         }
 
         data_array = avg_array;
-        avg_array = NULL;
-        num_precise = 0;
     }
 
     pthread_barrier_destroy(&resume_barrier);
     pthread_barrier_destroy(&pause_barrier);
     pthread_mutex_destroy(&num_precise_mx);
-    free(threads);
     free(thread_args);
 
     return 0;
@@ -229,11 +226,10 @@ void just_idle(pthread_args *args)
 
 void calculate_cell_avg(pthread_args *args)
 {
-    double **data_array, **avg_array;
-    double diff;
-    int i, j, k;
-
     for (;;) {
+        double **data_array, **avg_array;
+        int k;
+
         pthread_barrier_wait(args->resume_barrier);
         if (*args->all_precise) {
             printf("thread %d: job done, exiting ...\n", args->id);
@@ -244,6 +240,9 @@ void calculate_cell_avg(pthread_args *args)
         avg_array = args->avg_array;
 
         for (k = args->range_begin; k < args->range_end; k++) {
+            double diff;
+            int i, j;
+
             i = k / args->avg_dim + 1;
             j = k % args->avg_dim + 1;
 
@@ -269,7 +268,7 @@ void calculate_cell_avg(pthread_args *args)
     }
 }
 
-void fill_boundary_cells(double **data_array, double **avg_array, int data_dim)
+void complete_and_print_array(double **data_array, double **avg_array, int data_dim)
 {
     int i, j;
     for (i = 0; i < data_dim; i++) {
@@ -302,7 +301,7 @@ double** malloc_array(int dim)
     if (array == NULL) return NULL;
     for (i = 0; i < dim; i++) {
         array[i] = (double *) malloc(dim * sizeof(double));
-        if (array == NULL) return NULL;
+        if (array[i] == NULL) return NULL;
     }
     return array;
 }
