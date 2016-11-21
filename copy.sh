@@ -2,6 +2,6 @@
 
 make
 cp diffrelax_{seq,prl} ~/scratch
-cp diffrelax.slm ~/scratch
+cp -r jobfiles ~/scratch
 cp -r data/ ~/scratch
-cp -r results/ ~/scratch
+mkdir ~/scratch/balena_results
