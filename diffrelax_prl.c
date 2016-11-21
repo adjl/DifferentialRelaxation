@@ -12,7 +12,7 @@ typedef struct {
     pthread_mutex_t *num_precise_mx;
     double **data_array, **avg_array;
     double precision;
-    int *num_precise;
+    int *all_precise, *num_precise;
     int id, load, avg_dim;
     int range_begin, range_end;
 } pthread_args;
@@ -39,7 +39,8 @@ int main(int argc, char *argv[])
     pthread_args *thread_args;
     double **data_array, **avg_array;
     double precision;
-    int data_dim, num_threads, num_cells, num_precise;
+    int data_dim, num_threads, num_cells;
+    int all_precise, num_precise;
     int error, i, run = 0;
 
     /* Read arguments ------------------------------------------------------- */
@@ -83,6 +84,7 @@ int main(int argc, char *argv[])
         args.pause_barrier = &pause_barrier;
         args.num_precise_mx = &num_precise_mx;
         args.precision = precision;
+        args.all_precise = &all_precise;
         args.num_precise = &num_precise;
         args.id = i;
         args.load = 0;
@@ -162,6 +164,8 @@ int main(int argc, char *argv[])
         }
     }
 
+    all_precise = 0;
+
     for (;;) {
         avg_array = malloc_array(data_dim);
         if (avg_array == NULL) {
@@ -176,7 +180,7 @@ int main(int argc, char *argv[])
         pthread_barrier_wait(&resume_barrier);
         pthread_barrier_wait(&pause_barrier);
 
-        printf("\nrun=%d, num_precise=%d/%d [diff < %*.*f]\n", ++run,
+        printf("\nrun=%d num_precise=%d/%d [diff < %*.*f]\n", ++run,
                 num_precise, num_cells, DISP_WIDTH, DISP_PRECN, precision);
         printf("-----------------------------------------------------------\n");
 
@@ -187,6 +191,8 @@ int main(int argc, char *argv[])
         free(data_array);
 
         if (num_precise == num_cells) {
+            all_precise = 1;
+            pthread_barrier_wait(&resume_barrier);
             for (i = 0; i < data_dim; i++) {
                 free(avg_array[i]);
             }
@@ -212,6 +218,10 @@ void just_idle(pthread_args *args)
 {
     for (;;) {
         pthread_barrier_wait(args->resume_barrier);
+        if (*args->all_precise) {
+            printf("thread %d: had nothing to do ... :(\n", args->id);
+            break;
+        }
         printf("thread %d: idling and feeling useless ...\n", args->id);
         pthread_barrier_wait(args->pause_barrier);
     }
@@ -225,6 +235,10 @@ void calculate_cell_avg(pthread_args *args)
 
     for (;;) {
         pthread_barrier_wait(args->resume_barrier);
+        if (*args->all_precise) {
+            printf("thread %d: job done, exiting ...\n", args->id);
+            break;
+        }
 
         data_array = args->data_array;
         avg_array = args->avg_array;
