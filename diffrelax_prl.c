@@ -39,7 +39,7 @@ int main(int argc, char *argv[])
     double **data_array;
     double precision;
     int data_dim, num_threads, num_cells;
-    int all_precise, num_precise, i;
+    int all_precise, num_precise, run, err, i;
 
     /* Read arguments ------------------------------------------------------- */
 
@@ -59,12 +59,25 @@ int main(int argc, char *argv[])
 
     /* Initialise pthread_* ------------------------------------------------- */
 
-    pthread_barrier_init(&resume_barrier, NULL, num_threads + 1);
-    pthread_barrier_init(&pause_barrier, NULL, num_threads + 1);
-    pthread_mutex_init(&num_precise_mx, NULL);
+    err = pthread_barrier_init(&resume_barrier, NULL, num_threads + 1);
+    if (err != 0) {
+        printf("error: could not initialise barrier, aborting ...\n");
+        return err;
+    }
+    err = pthread_barrier_init(&pause_barrier, NULL, num_threads + 1);
+    if (err != 0) {
+        printf("error: could not initialise barrier, aborting ...\n");
+        return err;
+    }
+    err = pthread_mutex_init(&num_precise_mx, NULL);
+    if (err != 0) {
+        printf("error: could not initialise mutex, aborting ...\n");
+        return err;
+    }
 
     all_precise = 0;
     num_precise = 0;
+    run = 0;
 
     /* Initialise thread arguments array ------------------------------------ */
 
@@ -122,51 +135,39 @@ int main(int argc, char *argv[])
         int range_i;
         for (i = 0, range_i = 0; i < num_threads; range_i += thread_args[i].load, i++) {
             pthread_t thread;
-            int error;
-
             thread_args[i].range_begin = range_i;
             thread_args[i].range_end = range_i + thread_args[i].load;
-
-            error = pthread_create(&thread, NULL,
+            err = pthread_create(&thread, NULL,
                     (void * (*) (void *)) calculate_cell_avg,
                     (void *) &thread_args[i]);
-
-            if (error != 0) {
+            if (err != 0) {
                 printf("error: could not create thread %d, aborting ...\n", i);
-                return 1;
+                return err;
             }
         }
     } else {
         for (i = 0; i < num_threads; i++) {
             pthread_t thread;
-            int error;
-
             thread_args[i].range_begin = i;
             thread_args[i].range_end = i + 1;
-
             if (i < num_cells) {
-                error = pthread_create(&thread, NULL,
+                err = pthread_create(&thread, NULL,
                         (void * (*) (void *)) calculate_cell_avg,
                         (void *) &thread_args[i]);
             } else {
-                error = pthread_create(&thread, NULL,
+                err = pthread_create(&thread, NULL,
                         (void * (*) (void *)) just_idle,
                         (void *) &thread_args[i]);
             }
-
-            if (error != 0) {
+            if (err != 0) {
                 printf("error: could not create thread %d, aborting ...\n", i);
-                return 1;
+                return err;
             }
         }
     }
 
     for (;;) {
-        double **avg_array;
-        int run = 0;
-        num_precise = 0;
-
-        avg_array = malloc_array(data_dim);
+        double **avg_array = malloc_array(data_dim);
         if (avg_array == NULL) {
             printf("error: could not allocate memory for averages array, aborting ...\n");
             return 1;
@@ -201,11 +202,25 @@ int main(int argc, char *argv[])
         }
 
         data_array = avg_array;
+        num_precise = 0;
     }
 
-    pthread_barrier_destroy(&resume_barrier);
-    pthread_barrier_destroy(&pause_barrier);
-    pthread_mutex_destroy(&num_precise_mx);
+    err = pthread_barrier_destroy(&resume_barrier);
+    if (err != 0) {
+        printf("error: could not destroy barrier, aborting ...\n");
+        return err;
+    }
+    err = pthread_barrier_destroy(&pause_barrier);
+    if (err != 0) {
+        printf("error: could not destroy barrier, aborting ...\n");
+        return err;
+    }
+    err = pthread_mutex_destroy(&num_precise_mx);
+    if (err != 0) {
+        printf("error: could not destroy mutex, aborting ...\n");
+        return err;
+    }
+
     free(thread_args);
 
     return 0;
@@ -256,9 +271,17 @@ void calculate_cell_avg(pthread_args *args)
                     DISP_WIDTH, DISP_PRECN, diff);
 
             if (diff < args->precision) {
-                pthread_mutex_lock(args->num_precise_mx);
+                int err = pthread_mutex_lock(args->num_precise_mx);
+                if (err != 0) {
+                    printf("error: could not lock mutex, aborting ...\n");
+                    exit(EXIT_FAILURE);
+                }
                 (*args->num_precise)++;
-                pthread_mutex_unlock(args->num_precise_mx);
+                err = pthread_mutex_unlock(args->num_precise_mx);
+                if (err != 0) {
+                    printf("error: could not unlock mutex, aborting ...\n");
+                    exit(EXIT_FAILURE);
+                }
                 printf("\tthread %d: diff within precision, num_precise=%d\n",
                         args->id, *args->num_precise);
             }
